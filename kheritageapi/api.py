@@ -3,6 +3,9 @@
 #
 # This module provides easy abstraction of the Cultural Heritage API.
 #
+# Official API Documentation:
+# https://www.cha.go.kr/html/HtmlPage.do?pg=/publicinfo/pbinfo3_0202.jsp&mn=NS_04_04_03
+#
 # Developed with the enthusiasm of Jay Suh (jay@joseon.space) from the non-profit organization Joseon Space
 # (https://joseon.space). This module aims to facilitate efficient and accurate access  to Korea's rich cultural
 # heritage data for developers and researchers globally.
@@ -10,6 +13,7 @@
 
 import requests
 from models import *
+import xml.etree.ElementTree as ElementTree
 
 
 class APIBase:
@@ -23,14 +27,48 @@ class APIBase:
         response.raise_for_status()
         return response
 
-    def get_url(self) -> str:
-        """
-        Get the URL of the search.
-        :return: URL of the search.
-        """
 
-        return self.ORIGIN_URL + self.ENDPOINT_BASE + '?' + '&'.join(
-            [f'{key}={value}' for key, value in self.params.items() if value])
+class SearchResultItems:
+    def __init__(self, element):
+        self.sn = element.find('sn').text
+        self.no = element.find('no').text
+        self.ccma_name = element.find('ccmaName').text
+        self.crltsno_nm = element.find('crltsnoNm').text
+        self.ccba_mnm1 = element.find('ccbaMnm1').text
+        self.ccba_mnm2 = element.find('ccbaMnm2').text
+        self.ccba_ctcd_nm = element.find('ccbaCtcdNm').text
+        self.ccsi_name = element.find('ccsiName').text
+        self.ccba_admin = element.find('ccbaAdmin').text
+        self.ccba_kdcd = element.find('ccbaKdcd').text
+        self.ccba_ctcd = element.find('ccbaCtcd').text
+        self.ccba_asno = element.find('ccbaAsno').text
+        self.ccba_cncl = element.find('ccbaCncl').text
+        self.ccba_cpno = element.find('ccbaCpno').text
+        self.longitude = element.find('longitude').text
+        self.latitude = element.find('latitude').text
+        self.reg_dt = element.find('regDt').text
+
+    def __str__(self):
+        return f"[Item {self.sn}]\n-No {self.no}\n-CCMA Name: {self.ccma_name}\n-Crltsno Name: {self.crltsno_nm}\n-" \
+               f"CCBA Mnm1: {self.ccba_mnm1}\n-CCBA Mnm2: {self.ccba_mnm2}\n-CCBA Ctcd Name: {self.ccba_ctcd_nm}\n-" \
+               f"CCSI Name: {self.ccsi_name}\n-CCBA Admin: {self.ccba_admin}\n-CCBA Kdcd: {self.ccba_kdcd}\n-" \
+               f"CCBA Ctcd: {self.ccba_ctcd}\n-CCBA Asno: {self.ccba_asno}\n-CCBA Cncl: {self.ccba_cncl}\n-" \
+               f"CCBA Cpno: {self.ccba_cpno}\n-Longitude: {self.longitude}\n-Latitude: {self.latitude}\n-" \
+               f"Reg Dt: {self.reg_dt}"
+
+
+class SearchResult:
+    def __init__(self, xml_data):
+        root = ElementTree.fromstring(xml_data)
+        self.total_cnt = root.find('totalCnt').text
+        self.page_unit = root.find('pageUnit').text
+        self.page_index = root.find('pageIndex').text
+        self.items = [SearchResultItems(item) for item in root.findall('.//item')]
+
+    def __str__(self):
+        result_str = f"Total Count: {self.total_cnt}\nPage Unit: {self.page_unit}\nPage Index: {self.page_index}\n\n"
+        result_str += "\n".join(str(item) for item in self.items)
+        return result_str
 
 
 class ConstructSearch(APIBase):
@@ -64,6 +102,12 @@ class ConstructSearch(APIBase):
         if city_code is not None:
             self.params['ccbaLcto'] = city_code.value
 
+    def commit_search(self):
+        # Parse the XML data
+        xml_data = self._get(self.ENDPOINT_BASE, params=self.params).text
+
+        return SearchResult(xml_data)
+
     def set_type(self, heritage_type: HeritageType) -> None:
         self.params['ccbaKdcd'] = heritage_type.value
 
@@ -76,10 +120,10 @@ class ConstructSearch(APIBase):
     def set_ko_name(self, ko_name: str) -> None:
         self.params['ccbaMnm1'] = ko_name
 
-    def set_province_code(self, province_code: ProvinceCode) -> None:
+    def set_province(self, province_code: ProvinceCode) -> None:
         self.params['ccbaCtcd'] = province_code.value
 
-    def set_city_code(self, city_code: CityCode) -> None:
+    def set_city(self, city_code: CityCode) -> None:
         self.params['ccbaLcto'] = city_code.value
 
     def set_linked_number(self, linked_number: str) -> None:
@@ -96,7 +140,11 @@ class ConstructSearch(APIBase):
 
 
 if __name__ == '__main__':
-    search = ConstructSearch(city_code=Seoul.JONGNRO)
-    search.set_result_count(50)
-    search.set_type(HeritageType.INTANGIBLE_HERITAGE)
-    print(search.get_url())
+    search = ConstructSearch()
+    search.set_province(ProvinceCode.SEOUL.JONGNRO)
+    search.set_city(Seoul.JONGNRO)
+    search.set_type(HeritageType.HISTORIC_SITE)
+
+    results = search.commit_search()
+
+    print(results)
