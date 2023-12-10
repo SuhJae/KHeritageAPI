@@ -21,7 +21,12 @@ from xml.etree import ElementTree
 # Helper function to get text or None
 def get_text_or_none(element, tag):
     found = element.find(tag)
-    return found.text.strip() if found is not None else None
+    if found is None:
+        return None
+    if found.text is None:
+        return None
+
+    return found.text.strip()
 
 
 class SearchResultItems:
@@ -240,7 +245,7 @@ class Images:
 
     def __str__(self):
         result_str = f"Total Count: {self.count}\nType: {self.type}\nManagement Number: {self.management_number}\n" \
-                     f"City Code: {self.city_code}\nName: {self.name}\nName (Hanja): {self.name_hanja}\n\n"
+                     f"City Code: {self.city_code}\nName: {self.name}\nName (Hanja): {self.name_hanja}\n"
         result_str += "\n".join(str(image) for image in self.images)
         return result_str
 
@@ -252,6 +257,93 @@ class Images:
 
     def __len__(self):
         return len(self.images)
+
+
+class Videos:
+    def __init__(self, xml_data: str):
+        root = ElementTree.fromstring(xml_data)
+
+        self.count = get_text_or_none(root, 'totalCnt')
+        self.type = get_text_or_none(root, 'ccbaKdcd')
+        self.management_number = get_text_or_none(root, 'ccbaAsno')
+        self.city_code = get_text_or_none(root, 'ccbaCtcd')
+        self.name = get_text_or_none(root, 'ccbaMnm1')
+        self.name_hanja = get_text_or_none(root, 'ccbaMnm2')
+
+        self.videos = []
+        item = root.find('item')
+        if item is not None:
+            for video_info in zip(item.findall('sn'), item.findall('videoUrl')):
+                if video_info[1].text == "http://116.67.83.213/webdata/file_data/media_data/videos/":
+                    continue
+                self.videos.append(video_info[1].text)
+
+    def __str__(self):
+        result_str = f"Total Count: {self.count}\nType: {self.type}\nManagement Number: {self.management_number}\n" \
+                     f"City Code: {self.city_code}\nName: {self.name}\nName (Hanja): {self.name_hanja}\n"
+        result_str += "\n".join(str(video) for video in self.videos)
+        return result_str
+
+    def __getitem__(self, item):
+        return self.videos[item]
+
+    def __iter__(self):
+        return iter(self.videos)
+
+    def __len__(self):
+        return len(self.videos)
+
+
+class Event:
+    def __init__(self, xml_data):
+        self.sequence_number = get_text_or_none(xml_data, 'sn')
+        self.event_type = get_text_or_none(xml_data, 'siteCode')
+        self.event_name = get_text_or_none(xml_data, 'siteName')
+        self.event_description = get_text_or_none(xml_data, 'subContent')
+        self.host_name = get_text_or_none(xml_data, 'groupName')
+        self.contact = get_text_or_none(xml_data, 'contact')
+        self.event_location = get_text_or_none(xml_data, 'subDesc')
+        self.event_url = get_text_or_none(xml_data, 'subPath')
+        self.audiance = get_text_or_none(xml_data, 'subDesc1')
+        self.etc = get_text_or_none(xml_data, 'subDesc2')
+        self.city = get_text_or_none(xml_data, 'sido')
+        self.district = get_text_or_none(xml_data, 'gugun')
+        self.time_detail = get_text_or_none(xml_data, 'subDate')
+
+        s_date = get_text_or_none(xml_data, 'sDate')
+        e_date = get_text_or_none(xml_data, 'eDate')
+        self.start_date = time.strptime(s_date, '%Y%m%d') if s_date is not None else None
+        self.end_date = time.strptime(e_date, '%Y%m%d') if e_date is not None else None
+
+    def __str__(self):
+        return f"[Event {self.sequence_number}]\n- Type: {self.event_type}\n- Name: {self.event_name}\n" \
+               f"- Description: {self.event_description}\n- Start Date: {self.start_date}\n" \
+               f"- End Date: {self.end_date}\n- Host Name: {self.host_name}\n- Contact: {self.contact}\n" \
+               f"- Location: {self.event_location}\n- URL: {self.event_url}\n- Audiance: {self.audiance}\n" \
+               f"- Etc: {self.etc}\n- City: {self.city}\n- District: {self.district}\n" \
+               f"- Time Detail: {self.time_detail}"
+
+    def __getitem__(self, item):
+        return self.dict()[item]
+
+    def dict(self):
+        return {
+            'sequence_number': self.sequence_number,
+            'event_type': self.event_type,
+            'event_name': self.event_name,
+            'event_description': self.event_description,
+            'start_date': self.start_date,
+            'end_date': self.end_date,
+            'host_name': self.host_name,
+            'contact': self.contact,
+            'event_location': self.event_location,
+            'event_url': self.event_url,
+            'audiance': self.audiance,
+            'etc': self.etc,
+            'city': self.city,
+            'district': self.district,
+            'time_detail': self.time_detail
+        }
 
 
 class HeritageType(Enum):

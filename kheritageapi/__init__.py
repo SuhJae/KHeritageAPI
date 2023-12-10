@@ -1,1 +1,3 @@
-from .api import CulturalHeritageAPI
+import api
+import models
+import utils

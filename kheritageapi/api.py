@@ -10,6 +10,7 @@
 # (https://joseon.space). This module aims to facilitate efficient and accurate access  to Korea's rich cultural
 # heritage data for developers and researchers globally.
 #
+import xml.etree.ElementTree as ET
 
 import requests
 from models import *
@@ -28,7 +29,7 @@ class APIBase:
 
 
 class Search(APIBase):
-    ENDPOINT_BASE = 'SearchKindOpenapiList.do'
+    ENDPOINT = 'SearchKindOpenapiList.do'
 
     def __init__(self, heritage_type: HeritageType = None, start_year: int = None, end_year: int = None,
                  ko_name: str = None, province_code: ProvinceCode = None, city_code: CityCode = None,
@@ -55,7 +56,7 @@ class Search(APIBase):
             self.params['ccbaLcto'] = city_code.value
 
     def commit_search(self):
-        xml_data = self._get(self.ENDPOINT_BASE, params=self.params).text
+        xml_data = self._get(self.ENDPOINT, params=self.params).text
         return SearchResult(xml_data)
 
     def set_type(self, heritage_type: HeritageType) -> None:
@@ -108,16 +109,38 @@ class ItemDetail(APIBase):
         xml_data = self._get(self.ENDPOINT_IMAGE, params=self.params).text
         return Images(xml_data)
 
+    def video(self):
+        xml_data = self._get(self.ENDPOINT_VIDEO, params=self.params).text
+        return Videos(xml_data)
+
+
+class EventSearch(APIBase):
+    ENDPOINT = "openapi/selectEventListOpenapi.do"
+
+    def __init__(self, year: int, month: int, search_word: str = None, event_type: EventType = None):
+        super().__init__()
+        self.params = {'searchYear': year, 'searchMonth': month}
+        if search_word is not None:
+            self.params['searchWrd'] = search_word
+        if event_type is not None:
+            self.params['siteCode'] = event_type.value
+
+    def commit_search(self):
+        xml_data = self._get(self.ENDPOINT, params=self.params).text
+        root = ET.fromstring(xml_data)
+
+        # iterate through the items in the XML
+        items = []
+        for item_element in root.findall('.//item'):
+            # Assuming Event is a class that takes an XML element and parses it
+            items.append(Event(item_element))
+
+        return items
+
 
 if __name__ == '__main__':
-    search = Search()
-    search.set_province(ProvinceCode.SEOUL)
-    search.set_type(HeritageType.NATIONAL_TREASURE)
-    search.set_limit(3)
-    search.set_page_index(1)
+    search = EventSearch(2023, 4)
+    result = search.commit_search()
 
-    results = search.commit_search()
-
-    for result in results:
-        detail = ItemDetail(result)
-        print(detail.image())
+    for item in result:
+        print(item)
