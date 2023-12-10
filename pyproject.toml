@@ -1,0 +1,19 @@
+[project]
+name = "K-Heritage API"
+version = "0.0.1"
+authors = [
+  { name="Jay Suh", email="jay@joseon.space" },
+]
+description = "A Python package aimed easy abstraction of the Cultural Heritage API provided by the Cultural Heritage Administration of Korea."
+readme = "README.md"
+requires-python = ">=3.7"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/SuhJae/KHeritageAPI"
+"Bug Tracker" = "https://github.com/SuhJae/KHeritageAPI/issues"
+"Source Code" = "https://github.com/SuhJae/KHeritageAPI"
