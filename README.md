@@ -20,22 +20,39 @@ package is not yet available on PyPI. Stay tuned for updates and the official re
 
 ## Installation
 
-The package will be available for installation via pip upon its release.
-For now, you can clone the repository and install the package locally.
+`pip install kheritage`
 
 ## Usage
 
 Here's a basic example of how to use the KHeritageAPI to perform a search:
 
 ```python
-from kheritageapi import ConstructSearch, Seoul
+from kheritageapi.api import Search, ItemDetail, EventSearch
+from kheritageapi.models import CityCode, Seoul, HeritageType
 
-search = ConstructSearch(city_code=Seoul.JONGNRO)
-search.set_result_count(1)
-print(search.get_url())
+# Search for 15 historic sites in Seoul's Jongno district
+search = Search(result_count=15, city_code=CityCode.SEOUL, district_code=Seoul.JONGNRO, canceled=False,
+                heritage_type=HeritageType.HISTORIC_SITE)
+result = search.commit_search()
+
+# Get detailed information on the first item
+detail = ItemDetail(result.items[0])
+detail_info = detail.info()
+print(detail_info)
+
+# Also, you can get images and videos of the item
+images = detail.image()
+print(images)
+
+videos = detail.video()
+print(videos)
+
+# Search for events in 2023, December
+event_search = EventSearch(2023, 12)
+events = event_search.commit_search()
+for event in events:
+    print(event)
 ```
-
-Further documentation and examples will be provided upon the release.
 
 ## Contributing
 

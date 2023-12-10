@@ -1,3 +1,3 @@
-import api
-import models
-import utils
+__version__ = '0.0.5'
+
+from kheritageapi import *

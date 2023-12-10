@@ -377,7 +377,7 @@ class EventType(Enum):
     OTHERS = '06'  # 기타행사
 
 
-class ProvinceCode(Enum):
+class CityCode(Enum):
     SEOUL = '11'  # 서울
     BUSAN = '21'  # 부산
     DAEGU = '22'  # 대구
@@ -398,11 +398,11 @@ class ProvinceCode(Enum):
     NATIONAL = 'ZZ'  # 전국일원
 
 
-class CityCode(Enum):
+class DistrictCode(Enum):
     pass
 
 
-class Seoul(CityCode):
+class Seoul(DistrictCode):
     ALL = '00'  # 전체
     JONGNRO = '11'  # 종로구
     JUNG = '12'  # 중구
@@ -433,7 +433,7 @@ class Seoul(CityCode):
     SEOUL_WIDE = 'ZZ'  # 서울전역
 
 
-class Busan(CityCode):
+class Busan(DistrictCode):
     ALL = '00'  # 전체
     JUNG = '11'  # 중구
     SEO = '12'  # 서구
@@ -454,7 +454,7 @@ class Busan(CityCode):
     BUSAN_WIDE = 'ZZ'  # 부산전역
 
 
-class Daegu(CityCode):
+class Daegu(DistrictCode):
     ALL = '00'  # 전체
     JUNG = '11'  # 중구
     DONG = '12'  # 동구
@@ -468,7 +468,7 @@ class Daegu(CityCode):
     GUNWI = '32'  # 군위군
 
 
-class Incheon(CityCode):
+class Incheon(DistrictCode):
     ALL = '00'  # 전체
     JUNG = '11'  # 중구
     DONG = '12'  # 동구
@@ -483,7 +483,7 @@ class Incheon(CityCode):
     INCHEON_WIDE = 'ZZ'  # 인천전역
 
 
-class Gwangju(CityCode):
+class Gwangju(DistrictCode):
     ALL = '00'  # 전체
     DONG = '11'  # 동구
     SEO = '12'  # 서구
@@ -493,7 +493,7 @@ class Gwangju(CityCode):
     GWANGJU_WIDE = 'ZZ'  # 광주전역
 
 
-class Daejeon(CityCode):
+class Daejeon(DistrictCode):
     ALL = '00'  # 전체
     DONG = '11'  # 동구
     JUNG = '12'  # 중구
@@ -503,7 +503,7 @@ class Daejeon(CityCode):
     DAEJEON_WIDE = 'ZZ'  # 대전전역
 
 
-class Ulsan(CityCode):
+class Ulsan(DistrictCode):
     ALL = '00'  # 전체
     NAM = '01'  # 남구
     DONG = '02'  # 동구
@@ -513,11 +513,11 @@ class Ulsan(CityCode):
     ULSAN_WIDE = 'ZZ'  # 울산전역
 
 
-class Sejong(CityCode):
+class Sejong(DistrictCode):
     SEJONG_WIDE = '00'  # 세종시전역
 
 
-class Gyeonggi(CityCode):
+class Gyeonggi(DistrictCode):
     ALL = '00'  # 전체
     SUWON = '11'  # 수원시
     SEONGNAM = '12'  # 성남시
@@ -553,7 +553,7 @@ class Gyeonggi(CityCode):
     GYEONGGI_WIDE = 'ZZ'  # 경기전역
 
 
-class Gangwon(CityCode):
+class Gangwon(DistrictCode):
     ALL = '00'  # 전체
     CHUNCHEON = '11'  # 춘천시
     WONJU = '12'  # 원주시
@@ -577,7 +577,7 @@ class Gangwon(CityCode):
     GANGWON_WIDE = 'ZZ'  # 강원전역
 
 
-class Chungbuk(CityCode):
+class Chungbuk(DistrictCode):
     ALL = '00'  # 전체
     CHEONGJU = '20'  # 청주시
     CHUNGJU = '12'  # 충주시
@@ -593,7 +593,7 @@ class Chungbuk(CityCode):
     CHUNGBUK_WIDE = 'ZZ'  # 충북전역
 
 
-class Chungnam(CityCode):
+class Chungnam(DistrictCode):
     ALL = '00'  # 전체
     CHEONAN = '11'  # 천안시
     GONGJU = '12'  # 공주시
@@ -613,7 +613,7 @@ class Chungnam(CityCode):
     CHUNGNAM_WIDE = 'ZZ'  # 충남전역
 
 
-class Jeonbuk(CityCode):
+class Jeonbuk(DistrictCode):
     ALL = '00'  # 전체
     JEONJU = '11'  # 전주시
     GUNSAN = '12'  # 군산시
@@ -632,7 +632,7 @@ class Jeonbuk(CityCode):
     JEONBUK_WIDE = 'ZZ'  # 전북전역
 
 
-class Jeonnam(CityCode):
+class Jeonnam(DistrictCode):
     ALL = '00'  # 전체
     MOKPO = '11'  # 목포시
     YEOSU = '12'  # 여수시
@@ -662,7 +662,7 @@ class Jeonnam(CityCode):
     JEONNAM_WIDE = 'ZZ'  # 전남전역
 
 
-class Gyeongbuk(CityCode):
+class Gyeongbuk(DistrictCode):
     ALL = '00'  # 전체
     POHANG = '11'  # 포항시
     GYEONGJU = '12'  # 경주시
@@ -689,7 +689,7 @@ class Gyeongbuk(CityCode):
     GYEONGBUK_WIDE = 'ZZ'  # 경북전역
 
 
-class Gyeongnam(CityCode):
+class Gyeongnam(DistrictCode):
     ALL = '00'  # 전체
     JINJU = '13'  # 진주시
     CHANGWON = '50'  # 창원시
@@ -713,15 +713,8 @@ class Gyeongnam(CityCode):
     GYEONGNAM_WIDE = 'ZZ'  # 경남전역
 
 
-class Jeju(CityCode):
+class Jeju(DistrictCode):
     ALL = '00'  # 전체
     JEJU_CITY = '01'  # 제주시
     SEOGWIPO = '02'  # 서귀포시
     JEJU_WIDE = 'ZZ'  # 제주전역
-
-
-if __name__ == '__main__':
-    print(HeritageType.TREASURE.value)
-    print(EventType.NIGHTTIME_HERITAGE.value)
-    print(ProvinceCode.SEOUL.value)
-    print(Seoul.JONGNRO.value)

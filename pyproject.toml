@@ -1,6 +1,6 @@
 [project]
-name = "K-Heritage API"
-version = "0.0.1"
+name = "kheritage"
+version = "0.0.5"
 authors = [
   { name="Jay Suh", email="jay@joseon.space" },
 ]
@@ -17,3 +17,10 @@ classifiers = [
 "Homepage" = "https://github.com/SuhJae/KHeritageAPI"
 "Bug Tracker" = "https://github.com/SuhJae/KHeritageAPI/issues"
 "Source Code" = "https://github.com/SuhJae/KHeritageAPI"
+
+[build-system]
+requires = ["requests", "setuptools", "wheel"]
+
+[tool.setuptools.dynamic]
+
+dependencies = { file = "requirements.txt" }

@@ -10,10 +10,9 @@
 # (https://joseon.space). This module aims to facilitate efficient and accurate access  to Korea's rich cultural
 # heritage data for developers and researchers globally.
 #
-import xml.etree.ElementTree as ET
 
 import requests
-from models import *
+from .models import *
 
 
 class APIBase:
@@ -32,7 +31,7 @@ class Search(APIBase):
     ENDPOINT = 'SearchKindOpenapiList.do'
 
     def __init__(self, heritage_type: HeritageType = None, start_year: int = None, end_year: int = None,
-                 ko_name: str = None, province_code: ProvinceCode = None, city_code: CityCode = None,
+                 ko_name: str = None, city_code: CityCode = None, district_code: DistrictCode = None,
                  linked_number: str = None, canceled: bool = None, result_count: int = 10, page_index: int = 1):
         super().__init__()
 
@@ -50,10 +49,10 @@ class Search(APIBase):
             self.params['ccbaCncl'] = 'Y' if canceled else 'N'  # 지정해제여부 (Y, N)
         if heritage_type is not None:  # 지정종목별
             self.params['ccbaKdcd'] = heritage_type.value
-        if province_code is not None:
-            self.params['ccbaCtcd'] = province_code.value
         if city_code is not None:
-            self.params['ccbaLcto'] = city_code.value
+            self.params['ccbaCtcd'] = city_code.value
+        if district_code is not None:
+            self.params['ccbaLcto'] = district_code.value
 
     def commit_search(self):
         xml_data = self._get(self.ENDPOINT, params=self.params).text
@@ -71,11 +70,11 @@ class Search(APIBase):
     def set_ko_name(self, ko_name: str) -> None:
         self.params['ccbaMnm1'] = ko_name
 
-    def set_province(self, province_code: ProvinceCode) -> None:
-        self.params['ccbaCtcd'] = province_code.value
+    def set_province(self, city_code: CityCode) -> None:
+        self.params['ccbaCtcd'] = city_code.value
 
-    def set_city(self, city_code: CityCode) -> None:
-        self.params['ccbaLcto'] = city_code.value
+    def set_city(self, district_code: DistrictCode) -> None:
+        self.params['ccbaLcto'] = district_code.value
 
     def set_linked_number(self, linked_number: str) -> None:
         self.params['ccbaCpno'] = linked_number
@@ -127,7 +126,7 @@ class EventSearch(APIBase):
 
     def commit_search(self):
         xml_data = self._get(self.ENDPOINT, params=self.params).text
-        root = ET.fromstring(xml_data)
+        root = ElementTree.fromstring(xml_data)
 
         # iterate through the items in the XML
         items = []
@@ -138,9 +137,28 @@ class EventSearch(APIBase):
         return items
 
 
+# Example Usage
 if __name__ == '__main__':
-    search = EventSearch(2023, 4)
+    # Search for 15 historic sites in Seoul's Jongno district
+    search = Search(result_count=15, city_code=CityCode.SEOUL, district_code=Seoul.JONGNRO, canceled=False,
+                    heritage_type=HeritageType.HISTORIC_SITE)
     result = search.commit_search()
 
-    for item in result:
-        print(item)
+    # Get detailed information on the first item
+    detail = ItemDetail(result.items[0])
+    detail_info = detail.info()
+    print(detail_info)
+
+    # Also, you can get images and videos of the item
+    images = detail.image()
+    print(images)
+
+    videos = detail.video()
+    print(videos)
+
+    # Search for events in 2023, December
+    event_search = EventSearch(2023, 12)
+    events = event_search.commit_search()
+    for event in events:
+        print(event)
+
