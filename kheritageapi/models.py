@@ -14,6 +14,244 @@
 #
 
 from enum import Enum
+import time
+from xml.etree import ElementTree
+
+
+# Helper function to get text or None
+def get_text_or_none(element, tag):
+    found = element.find(tag)
+    return found.text.strip() if found is not None else None
+
+
+class SearchResultItems:
+    def __init__(self, element):
+        self.sequence_number = element.find('sn').text
+        self.uid = element.find('no').text
+        self.type = element.find('ccmaName').text
+        self.name = element.find('ccbaMnm1').text
+        self.name_hanja = element.find('ccbaMnm2').text
+        self.city = element.find('ccbaCtcdNm').text
+        self.district = element.find('ccsiName').text
+        self.manager = element.find('ccbaAdmin').text
+        self.type_code = element.find('ccbaKdcd').text
+        self.city_code = element.find('ccbaCtcd').text
+        self.management_number = element.find('ccbaAsno').text
+        self.canceled = element.find('ccbaCncl').text == 'Y'
+        self.linkage_number = element.find('ccbaCpno').text
+        self.longitude = element.find('longitude').text
+        self.latitude = element.find('latitude').text
+        self.last_modified = time.strptime(element.find('regDt').text, '%Y-%m-%d %H:%M:%S')
+
+    def __str__(self):
+        return f"[Item {self.sequence_number}]\n- UID: {self.uid}\n- Type: {self.type}\n- Name: {self.name}\n" \
+               f"- Name (Hanja): {self.name_hanja}\n- City: {self.city}\n- District: {self.district}\n" \
+               f"- Administrator: {self.manager}\n- Type Code: {self.type_code}\n" \
+               f"- City Code: {self.city_code}\n- Management Number: {self.management_number}\n" \
+               f"- Canceled: {self.canceled}\n- Linkage Number: {self.linkage_number}\n" \
+               f"- Longitude: {self.longitude}\n- Latitude: {self.latitude}\n" \
+               f"- Last Modified: {self.last_modified}"
+
+    def __getitem__(self, item):
+        return self.dict()[item]
+
+    def dict(self):
+        return {
+            'sequence_number': self.sequence_number,
+            'uid': self.uid,
+            'type': self.type,
+            'name': self.name,
+            'name_hanja': self.name_hanja,
+            'city': self.city,
+            'district': self.district,
+            'administrator': self.manager,
+            'type_code': self.type_code,
+            'city_code': self.city_code,
+            'management_number': self.management_number,
+            'canceled': self.canceled,
+            'linkage_number': self.linkage_number,
+            'longitude': self.longitude,
+            'latitude': self.latitude,
+            'last_modified': self.last_modified
+        }
+
+
+class SearchResult:
+    def __init__(self, xml_data):
+        root = ElementTree.fromstring(xml_data)
+        self.hits = root.find('totalCnt').text
+        self.limit = root.find('pageUnit').text
+        self.page_index = root.find('pageIndex').text
+        self.items = [SearchResultItems(item) for item in root.findall('.//item')]
+
+    def __str__(self):
+        result_str = f"Total Count: {self.hits}\nPage Unit: {self.limit}\nPage Index: {self.page_index}\n\n"
+        result_str += "\n".join(str(item) for item in self.items)
+        return result_str
+
+    def __getitem__(self, item):
+        return self.items[item]
+
+    def __iter__(self):
+        return iter(self.items)
+
+    def __len__(self):
+        return len(self.items)
+
+    def count(self):
+        """
+        The number of results fetched from the API.
+        :return: The number of results fetched from the API.
+        """
+        return len(self.items)
+
+    def pages(self):
+        """
+        The number of pages that are available from the API.
+        :return: The number of pages that are available from the API.
+        """
+        return int(self.hits) // int(self.limit) + 1
+
+
+class Detail:
+    def __init__(self, xml_data: str, preview: SearchResultItems):
+        self.uid = preview.uid
+        self.name = preview.name
+        self.name_hanja = preview.name_hanja
+        self.city = preview.city
+        self.district = preview.district
+        self.canceled = preview.canceled
+        self.last_modified = preview.last_modified
+
+        root = ElementTree.fromstring(xml_data)
+        item = root.find('item')
+
+        self.type_code = get_text_or_none(root, 'ccbaKdcd')
+        self.management_number = get_text_or_none(root, 'ccbaAsno')
+        self.city_code = get_text_or_none(root, 'ccbaCtcd')
+        self.linkage_number = get_text_or_none(root, 'ccbaCpno')
+        self.longitude = get_text_or_none(root, 'longitude')
+        self.latitude = get_text_or_none(root, 'latitude')
+        self.type = get_text_or_none(item, 'ccmaName')
+        self.category1 = get_text_or_none(item, 'gcodeName')
+        self.category2 = get_text_or_none(item, 'bcodeName')
+        self.category3 = get_text_or_none(item, 'mcodeName')
+        self.category4 = get_text_or_none(item, 'scodeName')
+        self.quantity = get_text_or_none(item, 'ccbaQuan')
+
+        # Special handling for date
+        date_str = get_text_or_none(item, 'ccbaAsdt')
+        self.registered_date = time.strptime(date_str, '%Y%m%d') if date_str else None
+
+        self.location_description = get_text_or_none(item, 'ccbaLcad')
+        self.era = get_text_or_none(item, 'ccceName')
+        self.owner = get_text_or_none(item, 'ccbaPoss')
+        self.manager = get_text_or_none(item, 'ccbaAdmin')
+        self.thumbnail = get_text_or_none(item, 'imageUrl')
+        self.content = get_text_or_none(item, 'content')
+
+    def __str__(self):
+        return f"- UID: {self.uid}\n- Type: {self.type}\n- Name: {self.name}\n" \
+               f"- Name (Hanja): {self.name_hanja}\n- City: {self.city}\n- District: {self.district}\n" \
+               f"- Administrator: {self.manager}\n- Type Code: {self.type_code}\n" \
+               f"- City Code: {self.city_code}\n- Management Number: {self.management_number}\n" \
+               f"- Canceled: {self.canceled}\n- Linkage Number: {self.linkage_number}\n" \
+               f"- Longitude: {self.longitude}\n- Latitude: {self.latitude}\n" \
+               f"- Last Modified: {self.last_modified}\n- Category 1: {self.category1}\n" \
+               f"- Category 2: {self.category2}\n- Category 3: {self.category3}\n" \
+               f"- Category 4: {self.category4}\n- Quantity: {self.quantity}\n" \
+               f"- Registered Date: {self.registered_date}\n- Location Description: {self.location_description}\n" \
+               f"- Era: {self.era}\n- Owner: {self.owner}\n- Thumbnail: {self.thumbnail}\n" \
+               f"- Content: {self.content}"
+
+    def __getitem__(self, item):
+        return self.dict()[item]
+
+    def dict(self):
+        return {
+            'uid': self.uid,
+            'name': self.name,
+            'name_hanja': self.name_hanja,
+            'city': self.city,
+            'district': self.district,
+            'canceled': self.canceled,
+            'last_modified': self.last_modified,
+            'type_code': self.type_code,
+            'management_number': self.management_number,
+            'city_code': self.city_code,
+            'linkage_number': self.linkage_number,
+            'longitude': self.longitude,
+            'latitude': self.latitude,
+            'type': self.type,
+            'category1': self.category1,
+            'category2': self.category2,
+            'category3': self.category3,
+            'category4': self.category4,
+            'quantity': self.quantity,
+            'registered_date': self.registered_date,
+            'location_description': self.location_description,
+            'era': self.era,
+            'owner': self.owner,
+            'thumbnail': self.thumbnail,
+            'content': self.content
+        }
+
+
+class Image:
+    def __init__(self, licence, image_url, description):
+        self.licence = licence
+        self.image_url = image_url
+        self.description = description
+
+    def __str__(self):
+        return f"- Image Nuri: {self.licence}\n- Image URL: {self.image_url}\n" \
+               f"- Description: {self.description}"
+
+    def __getitem__(self, item):
+        return self.dict()[item]
+
+    def dict(self):
+        return {
+            'image_nuri': self.licence,
+            'image_url': self.image_url,
+            'description': self.description
+        }
+
+
+class Images:
+    def __init__(self, xml_data: str):
+        root = ElementTree.fromstring(xml_data)
+
+        self.count = get_text_or_none(root, 'totalCnt')
+        self.type = get_text_or_none(root, 'ccbaKdcd')
+        self.management_number = get_text_or_none(root, 'ccbaAsno')
+        self.city_code = get_text_or_none(root, 'ccbaCtcd')
+        self.name = get_text_or_none(root, 'ccbaMnm1')
+        self.name_hanja = get_text_or_none(root, 'ccbaMnm2')
+
+        self.images = []
+
+        self.images = []
+        item = root.find('item')
+        if item is not None:
+            for image_info in zip(item.findall('sn'), item.findall('imageNuri'), item.findall('imageUrl'),
+                                  item.findall('ccimDesc')):
+                self.images.append(Image(image_info[1].text, image_info[2].text, image_info[3].text))
+
+    def __str__(self):
+        result_str = f"Total Count: {self.count}\nType: {self.type}\nManagement Number: {self.management_number}\n" \
+                     f"City Code: {self.city_code}\nName: {self.name}\nName (Hanja): {self.name_hanja}\n\n"
+        result_str += "\n".join(str(image) for image in self.images)
+        return result_str
+
+    def __getitem__(self, item):
+        return self.images[item]
+
+    def __iter__(self):
+        return iter(self.images)
+
+    def __len__(self):
+        return len(self.images)
 
 
 class HeritageType(Enum):
@@ -395,4 +633,3 @@ if __name__ == '__main__':
     print(EventType.NIGHTTIME_HERITAGE.value)
     print(ProvinceCode.SEOUL.value)
     print(Seoul.JONGNRO.value)
-
