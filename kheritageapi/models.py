@@ -16,10 +16,16 @@
 from enum import Enum
 import time
 from xml.etree import ElementTree
+from typing import Optional
 
 
-# Helper function to get text or None
-def get_text_or_none(element, tag):
+def get_text_or_none(element: ElementTree, tag: str) -> Optional[str]:
+    """ Helper function to get text from an XML element or None if the element is not found.
+
+    :param element: XML element to search.
+    :param tag: Tag of the element to search.
+    :return: Text of the element or None if the element is not found.
+    """
     found = element.find(tag)
     if found is None:
         return None
@@ -30,7 +36,33 @@ def get_text_or_none(element, tag):
 
 
 class SearchResultItems:
-    def __init__(self, element):
+    """ Data model for a single search result item.
+    This class is used internally by the SearchResult class for storing search results.
+
+    :ivar sequence_number: Sequence number of the search result item.
+    :ivar uid: Unique ID of the search result item.
+    :ivar type: Type of the search result item.
+    :ivar name: Korean name of the search result item.
+    :ivar name_hanja: Name of the search result item in Chinese characters.
+    :ivar city: City name of the search result item.
+    :ivar district: District name of the search result item.
+    :ivar manager: Administrator name of the search result item.
+    :ivar type_code: Type code of the search result item.
+    :ivar city_code: City code of the search result item.
+    :ivar management_number: Management number of the search result item.
+    :ivar canceled: Whether the search result item is removed from the registered list of cultural heritage.
+    :ivar linkage_number: Linkage number of the search result item.
+    :ivar longitude: Longitude of the search result item.
+    :ivar latitude: Latitude of the search result item.
+    :ivar last_modified: Last modified date of the search result item.
+    """
+
+    def __init__(self, element: ElementTree) -> None:
+        """ Initializes the search result item.
+
+        :param element: XML element of the search result item.
+        """
+
         self.sequence_number = element.find('sn').text
         self.uid = element.find('no').text
         self.type = element.find('ccmaName').text
@@ -48,7 +80,7 @@ class SearchResultItems:
         self.latitude = element.find('latitude').text
         self.last_modified = time.strptime(element.find('regDt').text, '%Y-%m-%d %H:%M:%S')
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"[Item {self.sequence_number}]\n- UID: {self.uid}\n- Type: {self.type}\n- Name: {self.name}\n" \
                f"- Name (Hanja): {self.name_hanja}\n- City: {self.city}\n- District: {self.district}\n" \
                f"- Administrator: {self.manager}\n- Type Code: {self.type_code}\n" \
@@ -60,7 +92,29 @@ class SearchResultItems:
     def __getitem__(self, item):
         return self.dict()[item]
 
-    def dict(self):
+    def dict(self) -> dict:
+        """ Returns the search result item as a dictionary.
+
+        :return: The search result item as a dictionary in the following format:
+            {
+                'sequence_number': Sequence number of the search result item.
+                'uid': Unique ID of the search result item.
+                'type': Type of the search result item.
+                'name': Korean name of the search result item.
+                'name_hanja': Name of the search result item in Chinese characters.
+                'city': City name of the search result item.
+                'district': District name of the search result item.
+                'administrator': Administrator name of the search result item.
+                'type_code': Type code of the search result item.
+                'city_code': City code of the search result item.
+                'management_number': Management number of the search result item.
+                'canceled': Whether the search result item is removed from the registered list of cultural heritage.
+                'linkage_number': Linkage number of the search result item.
+                'longitude': Longitude of the search result item.
+                'latitude': Latitude of the search result item.
+                'last_modified': Last modified date of the search result item.
+            }
+        """
         return {
             'sequence_number': self.sequence_number,
             'uid': self.uid,
@@ -82,7 +136,20 @@ class SearchResultItems:
 
 
 class SearchResult:
-    def __init__(self, xml_data):
+    """ Data model for holding multiple search results returned from the API.
+    Iteration or indexing of this class will return SearchResultItems.
+
+    :ivar hits: Total number of results available from the API.
+    :ivar limit: Number of results per page.
+    :ivar page_index: Index of the current page.
+    :ivar items: List of search result items.
+    """
+
+    def __init__(self, xml_data: str) -> None:
+        """ Initializes the search result.
+
+        :param xml_data: XML data returned from the API.
+        """
         root = ElementTree.fromstring(xml_data)
         self.hits = root.find('totalCnt').text
         self.limit = root.find('pageUnit').text
@@ -103,14 +170,7 @@ class SearchResult:
     def __len__(self):
         return len(self.items)
 
-    def count(self):
-        """
-        The number of results fetched from the API.
-        :return: The number of results fetched from the API.
-        """
-        return len(self.items)
-
-    def pages(self):
+    def pages(self) -> int:
         """
         The number of pages that are available from the API.
         :return: The number of pages that are available from the API.
@@ -119,7 +179,43 @@ class SearchResult:
 
 
 class Detail:
-    def __init__(self, xml_data: str, preview: SearchResultItems):
+    """ Data model for a detailed information of a single cultural heritage item.
+
+    :ivar uid: Unique ID of the search result item.
+    :ivar name: Korean name of the search result item.
+    :ivar name_hanja: Name of the search result item in Chinese characters.
+    :ivar city: City name of the search result item.
+    :ivar district: District name of the search result item.
+    :ivar canceled: Whether the search result item is removed from the registered list of cultural heritage.
+    :ivar last_modified: Last modified date of the search result item.
+    :ivar type_code: Type code of the search result item.
+    :ivar management_number: Management number of the search result item.
+    :ivar city_code: City code of the search result item.
+    :ivar linkage_number: Linkage number of the search result item.
+    :ivar longitude: Longitude of the search result item.
+    :ivar latitude: Latitude of the search result item.
+    :ivar type: Type of the search result item.
+    :ivar category1: Parent category of the category2. The broadest category.
+    :ivar category2: Child category of the category1. The second broadest category.
+    :ivar category3: Child category of the category2. The second narrowest category.
+    :ivar category4: Child category of the category3. The narrowest category.
+    :ivar quantity: Quantity of the cultural heritage item.
+    :ivar registered_date: Registered date of the cultural heritage item.
+    :ivar location_description: Location description of the cultural heritage item.
+    :ivar era: Era of the cultural heritage item.
+    :ivar owner: Owner of the cultural heritage item.
+    :ivar manager: Manager of the cultural heritage item.
+    :ivar thumbnail: Thumbnail of the cultural heritage item.
+    :ivar content: Content of the cultural heritage item.
+    """
+
+    def __init__(self, xml_data: str, preview: SearchResultItems) -> None:
+        """ Initializes the detailed information of a single cultural heritage item.
+
+        :param xml_data: XML data returned from the API.
+        :param preview: Preview information of the cultural heritage item used to search this item.
+        """
+
         self.uid = preview.uid
         self.name = preview.name
         self.name_hanja = preview.name_hanja
@@ -172,7 +268,38 @@ class Detail:
     def __getitem__(self, item):
         return self.dict()[item]
 
-    def dict(self):
+    def dict(self) -> dict:
+        """ Returns the detailed information of the cultural heritage item as a dictionary.
+
+        :return: The detailed information of the cultural heritage item as a dictionary in the following format:
+            {
+                'uid': Unique ID of the search result item.
+                'name': Korean name of the search result item.
+                'name_hanja': Name of the search result item in Chinese characters.
+                'city': City name of the search result item.
+                'district': District name of the search result item.
+                'canceled': Whether the search result item is removed from the registered list of cultural heritage.
+                'last_modified': Last modified date of the search result item.
+                'type_code': Type code of the search result item.
+                'management_number': Management number of the search result item.
+                'city_code': City code of the search result item.
+                'linkage_number': Linkage number of the search result item.
+                'longitude': Longitude of the search result item.
+                'latitude': Latitude of the search result item.
+                'type': Type of the search result item.
+                'category1': Parent category of the category2. The broadest category.
+                'category2': Child category of the category1. The second broadest category.
+                'category3': Child category of the category2. The second narrowest category.
+                'category4': Child category of the category3. The narrowest category.
+                'quantity': Quantity of the cultural heritage item.
+                'registered_date': Registered date of the cultural heritage item.
+                'location_description': Location description of the cultural heritage item.
+                'era': Era of the cultural heritage item.
+                'owner': Owner of the cultural heritage item.
+                'thumbnail': Thumbnail of the cultural heritage item.
+                'content': Content of the cultural heritage item.
+            }
+        """
         return {
             'uid': self.uid,
             'name': self.name,
@@ -203,7 +330,20 @@ class Detail:
 
 
 class Image:
-    def __init__(self, licence, image_url, description):
+    """Data model for an image of a cultural heritage item.
+
+    :ivar licence: Licence of the image.
+    :ivar image_url: URL of the image.
+    :ivar description: Description of the image."""
+
+    def __init__(self, licence: str, image_url: str, description: str) -> None:
+        """ Initializes the image of a cultural heritage item.
+
+        :param licence: Licence code of the image.
+        :param image_url: URL of the image.
+        :param description: Description of the image.
+        """
+
         self.licence = licence
         self.image_url = image_url
         self.description = description
@@ -215,7 +355,16 @@ class Image:
     def __getitem__(self, item):
         return self.dict()[item]
 
-    def dict(self):
+    def dict(self) -> dict:
+        """ Returns the image of the cultural heritage item as a dictionary.
+
+        :return: The image of the cultural heritage item as a dictionary in the following format:
+            {
+                'image_nuri': Licence code of the image.
+                'image_url': URL of the image.
+                'description': Description of the image.
+            }
+        """
         return {
             'image_nuri': self.licence,
             'image_url': self.image_url,
@@ -224,7 +373,23 @@ class Image:
 
 
 class Images:
-    def __init__(self, xml_data: str):
+    """Data model for multiple images of a cultural heritage item.
+
+    :ivar count: Total number of images available.
+    :ivar type: Type of the cultural heritage item.
+    :ivar management_number: Management number of the cultural heritage item.
+    :ivar city_code: City code of the cultural heritage item.
+    :ivar name: Korean name of the cultural heritage item.
+    :ivar name_hanja: Name of the cultural heritage item in Chinese characters.
+    :ivar images: List of images of the cultural heritage item.
+    """
+
+    def __init__(self, xml_data: str) -> None:
+        """ Initializes the images of a cultural heritage item.
+
+        :param xml_data: XML data returned from the API.
+        """
+
         root = ElementTree.fromstring(xml_data)
 
         self.count = get_text_or_none(root, 'totalCnt')
@@ -260,7 +425,23 @@ class Images:
 
 
 class Videos:
-    def __init__(self, xml_data: str):
+    """Data model for multiple videos of a cultural heritage item.
+    Indexes and iteration of this class will return the video URLs.
+
+    :ivar count: Total number of videos available.
+    :ivar type: Type of the cultural heritage item.
+    :ivar management_number: Management number of the cultural heritage item.
+    :ivar city_code: City code of the cultural heritage item.
+    :ivar name: Korean name of the cultural heritage item.
+    :ivar name_hanja: Name of the cultural heritage item in Chinese characters.
+    :ivar videos: List of videos of the cultural heritage item.
+    """
+
+    def __init__(self, xml_data: str) -> None:
+        """Initializes the videos of a cultural heritage item.
+
+        :param xml_data: XML data returned from the API.
+        """
         root = ElementTree.fromstring(xml_data)
 
         self.count = get_text_or_none(root, 'totalCnt')
@@ -295,7 +476,30 @@ class Videos:
 
 
 class Event:
-    def __init__(self, xml_data):
+    """Data model for a single event.
+
+    :ivar sequence_number: Sequence number of the event.
+    :ivar event_type: Type of the event.
+    :ivar event_name: Name of the event.
+    :ivar event_description: Description of the event.
+    :ivar start_date: Start date of the event.
+    :ivar end_date: End date of the event.
+    :ivar host_name: Host name of the event.
+    :ivar contact: Contact information of the event.
+    :ivar event_location: Location of the event.
+    :ivar event_url: URL of the event.
+    :ivar audiance: Audiance of the event.
+    :ivar etc: Additional information of the event.
+    :ivar city: City of the event.
+    :ivar district: District of the event.
+    :ivar time_detail: Time detail of the event.
+    """
+
+    def __init__(self, xml_data: str) -> None:
+        """Initializes the event object.
+
+        :param xml_data: XML data returned from the API.
+        """
         self.sequence_number = get_text_or_none(xml_data, 'sn')
         self.event_type = get_text_or_none(xml_data, 'siteCode')
         self.event_name = get_text_or_none(xml_data, 'siteName')
@@ -326,7 +530,28 @@ class Event:
     def __getitem__(self, item):
         return self.dict()[item]
 
-    def dict(self):
+    def dict(self) -> dict:
+        """ Returns the event as a dictionary.
+        :return: The event as a dictionary in the following format:
+            {
+                'sequence_number': Sequence number of the event.
+                'event_type': Type of the event.
+                'event_name': Name of the event.
+                'event_description': Description of the event.
+                'start_date': Start date of the event.
+                'end_date': End date of the event.
+                'host_name': Host name of the event.
+                'contact': Contact information of the event.
+                'event_location': Location of the event.
+                'event_url': URL of the event.
+                'audiance': Audiance of the event.
+                'etc': Additional information of the event.
+                'city': City of the event.
+                'district': District of the event.
+                'time_detail': Time detail of the event.
+            }
+        """
+
         return {
             'sequence_number': self.sequence_number,
             'event_type': self.event_type,
@@ -345,6 +570,8 @@ class Event:
             'time_detail': self.time_detail
         }
 
+
+# ===================================================== CONSTANTS =====================================================
 
 class HeritageType(Enum):
     NATIONAL_TREASURE = '11'  # 국보
