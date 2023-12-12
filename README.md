@@ -126,14 +126,14 @@ Search for 15 historic sites in Seoul's Jongno district, and search for detailed
 서울 종로구에 있는 15개의 역사적 유적을 검색하고, 첫 번째 항목에 대한 상세 정보를 검색하여 출력하기
 
 ```python
-from kheritageapi.heritage import HeritageSearcher, ItemDetail
+from kheritageapi.heritage import HeritageSearcher, HeritageInfo
 from kheritageapi.models import CityCode, Seoul, HeritageType
 
 # Search for 15 historic sites in Seoul's Jongno district
 # 서울 종로구에 있는 15개의 역사적 유적을 검색하기
 search = HeritageSearcher(result_count=15, city_code=CityCode.SEOUL, district_code=Seoul.JONGNRO, canceled=False,
-                heritage_type=HeritageType.HISTORIC_SITE)
-result = search.commit_search()
+                          heritage_type=HeritageType.HISTORIC_SITE)
+result = search.perform_search()
 
 # Get detailed information on the first item
 # 첫 번째 항목에 대한 상세 정보 가져오기
@@ -172,10 +172,10 @@ from kheritageapi.palace import PalaceSearcher, PalaceInfo
 from kheritageapi.models import PalaceCode
 
 search = PalaceSearcher(PalaceCode.GYEONGBOKGUNG)
-    items = search.perform_search()
-    for item in items:
-        detail = PalaceInfo(item)
-        print(detail.retrieve_details())
+items = search.perform_search()
+for item in items:
+    detail = PalaceInfo(item)
+    print(detail.retrieve_details())
 ```
 
 ## Contributing | 기여하기 🤝
