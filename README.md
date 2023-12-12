@@ -42,13 +42,13 @@ response = requests.get(base_url, params=paramter)
 
 **After | 이후 🤣**
 ```Python
-from kheritageapi.api import Search
+from kheritageapi.heritage import HeritageSearcher
 from kheritageapi.models import CityCode, Seoul, HeritageType
 
-search = Search(result_count=15, city_code=CityCode.SEOUL, district_code=Seoul.JONGNRO, canceled=False,
+search = HeritageSearcher(result_count=15, city_code=CityCode.SEOUL, district_code=Seoul.JONGNRO, canceled=False,
                 heritage_type=HeritageType.HISTORIC_SITE)
 
-result = search.commit_search()
+result = search.perform_search()
 ```
 
 ### Structured response handling | 구조화된 응답 처리 ✅
@@ -87,7 +87,7 @@ print(offset)
 ```Python
 # Commit search alredy returns a SearchResult object ready to use!
 # 검색 결과는 이미 바로 사용할 수 있는 SearchResult 객체로 반환됩니다!
-result = search.commit_search() 
+result = search.perform_search() 
 
 print(result.hits)
 print(result.limit)
@@ -114,7 +114,7 @@ paramter = {"stCcbaAsdt": 2020, "stCcbaAedt": 2020, "ccbaCtcd": 11, "ccbaKdcd": 
 # Oh, we are querying for 2020, December, in Seoul's Jongno district, for 15 historic sites!
 # 아, 우리는 2020년 12월, 서울 종로구에 있는 15개의 역사적 유적을 검색하고 있군요!
 
-Search(result_count=15, city_code=CityCode.SEOUL, district_code=Seoul.JONGNRO, canceled=False,
+HeritageSearcher(result_count=15, city_code=CityCode.SEOUL, district_code=Seoul.JONGNRO, canceled=False,
                 heritage_type=HeritageType.HISTORIC_SITE)
 
 ```
@@ -126,27 +126,27 @@ Search for 15 historic sites in Seoul's Jongno district, and search for detailed
 서울 종로구에 있는 15개의 역사적 유적을 검색하고, 첫 번째 항목에 대한 상세 정보를 검색하여 출력하기
 
 ```python
-from kheritageapi.api import Search, ItemDetail
+from kheritageapi.heritage import HeritageSearcher, ItemDetail
 from kheritageapi.models import CityCode, Seoul, HeritageType
 
 # Search for 15 historic sites in Seoul's Jongno district
 # 서울 종로구에 있는 15개의 역사적 유적을 검색하기
-search = Search(result_count=15, city_code=CityCode.SEOUL, district_code=Seoul.JONGNRO, canceled=False,
+search = HeritageSearcher(result_count=15, city_code=CityCode.SEOUL, district_code=Seoul.JONGNRO, canceled=False,
                 heritage_type=HeritageType.HISTORIC_SITE)
 result = search.commit_search()
 
 # Get detailed information on the first item
 # 첫 번째 항목에 대한 상세 정보 가져오기
-detail = ItemDetail(result.items[0])
-detail_info = detail.info()
+detail = HeritageInfo(result.items[0])
+detail_info = detail.retrieve_detail()
 print(detail_info)
 
 # Also, you can get images and videos of the item
 # 또한, 항목의 이미지와 동영상을 가져올 수 있습니다
-images = detail.image()
+images = detail.retrieve_image()
 print(images)
 
-videos = detail.video()
+videos = detail.retrieve_video()
 print(videos)
 ```
 
@@ -155,14 +155,28 @@ Search for events in December 2023, and print detailed information for the all t
 2023년 12월에 있는 행사를 검색하고, 검색 결과를 출력하기
 
 ```python
-from kheritageapi.api import EventSearch
+from kheritageapi.heritage import EventSearcher
 
-event_search = EventSearch(2023, 12)
-events = event_search.commit_search()
+event_search = EventSearcher(2023, 12)
+events = event_search.perform_search()
 for event in events:
     print(event)
 ```
 
+Seatch for all items in Gyenbokgung Palace, and print detailed information for the all the items.
+
+경복궁에 있는 모든 항목을 검색하고, 검색 결과를 출력하기
+
+```python
+from kheritageapi.palace import PalaceSearcher, PalaceInfo
+from kheritageapi.models import PalaceCode
+
+search = PalaceSearcher(PalaceCode.GYEONGBOKGUNG)
+    items = search.perform_search()
+    for item in items:
+        detail = PalaceInfo(item)
+        print(detail.retrieve_details())
+```
 
 ## Contributing | 기여하기 🤝
 

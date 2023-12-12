@@ -13,7 +13,6 @@
 # heritage data for developers and researchers globally.
 #
 
-from enum import Enum
 import time
 from xml.etree import ElementTree
 from typing import Optional
@@ -35,7 +34,7 @@ def get_text_or_none(element: ElementTree, tag: str) -> Optional[str]:
     return found.text.strip()
 
 
-class SearchResultItems:
+class HeritageSearchResults:
     """ Data model for a single search result item.
     This class is used internally by the SearchResult class for storing search results.
 
@@ -135,7 +134,7 @@ class SearchResultItems:
         }
 
 
-class SearchResult:
+class HeritagSearchResultItem:
     """ Data model for holding multiple search results returned from the API.
     Iteration or indexing of this class will return SearchResultItems.
 
@@ -154,7 +153,7 @@ class SearchResult:
         self.hits = root.find('totalCnt').text
         self.limit = root.find('pageUnit').text
         self.page_index = root.find('pageIndex').text
-        self.items = [SearchResultItems(item) for item in root.findall('.//item')]
+        self.items = [HeritageSearchResults(item) for item in root.findall('.//item')]
 
     def __str__(self):
         result_str = f"Total Count: {self.hits}\nPage Unit: {self.limit}\nPage Index: {self.page_index}\n\n"
@@ -178,7 +177,7 @@ class SearchResult:
         return int(self.hits) // int(self.limit) + 1
 
 
-class Detail:
+class HeritageDetail:
     """ Data model for a detailed information of a single cultural heritage item.
 
     :ivar uid: Unique ID of the search result item.
@@ -209,7 +208,7 @@ class Detail:
     :ivar content: Content of the cultural heritage item.
     """
 
-    def __init__(self, xml_data: str, preview: SearchResultItems) -> None:
+    def __init__(self, xml_data: str, preview: HeritageSearchResults) -> None:
         """ Initializes the detailed information of a single cultural heritage item.
 
         :param xml_data: XML data returned from the API.
@@ -329,7 +328,7 @@ class Detail:
         }
 
 
-class Image:
+class HeritageImageItem:
     """Data model for an image of a cultural heritage item.
 
     :ivar licence: Licence of the image.
@@ -372,7 +371,7 @@ class Image:
         }
 
 
-class Images:
+class HeritageImageSet:
     """Data model for multiple images of a cultural heritage item.
 
     :ivar count: Total number of images available.
@@ -406,7 +405,7 @@ class Images:
         if item is not None:
             for image_info in zip(item.findall('sn'), item.findall('imageNuri'), item.findall('imageUrl'),
                                   item.findall('ccimDesc')):
-                self.images.append(Image(image_info[1].text, image_info[2].text, image_info[3].text))
+                self.images.append(HeritageImageItem(image_info[1].text, image_info[2].text, image_info[3].text))
 
     def __str__(self):
         result_str = f"Total Count: {self.count}\nType: {self.type}\nManagement Number: {self.management_number}\n" \
@@ -424,7 +423,7 @@ class Images:
         return len(self.images)
 
 
-class Videos:
+class HeritageVideoSet:
     """Data model for multiple videos of a cultural heritage item.
     Indexes and iteration of this class will return the video URLs.
 
@@ -475,7 +474,7 @@ class Videos:
         return len(self.videos)
 
 
-class Event:
+class HeritageEvent:
     """Data model for a single event.
 
     :ivar sequence_number: Sequence number of the event.
@@ -495,7 +494,7 @@ class Event:
     :ivar time_detail: Time detail of the event.
     """
 
-    def __init__(self, xml_data: str) -> None:
+    def __init__(self, xml_data: ElementTree) -> None:
         """Initializes the event object.
 
         :param xml_data: XML data returned from the API.
@@ -571,9 +570,271 @@ class Event:
         }
 
 
+class PalaceSearchResultItem:
+    """Data model for a single palace.
+
+    :ivar serial_number: Serial number of the palace.
+    :ivar palace_code: Palace code of the palace.
+    :ivar detail_code: Detail code of the palace.
+    :ivar item_name: Name of the item.
+    :ivar item_explanation: Explanation of the item.
+    :ivar thubnail: Thumbnail of the item.
+    """
+
+    def __init__(self, xml_data: ElementTree) -> None:
+        self.serial_number = int(get_text_or_none(xml_data, 'serial_number'))
+        self.palace_code = int(get_text_or_none(xml_data, 'gung_number'))
+        self.detail_code = int(get_text_or_none(xml_data, 'detail_code'))
+        self.item_name = get_text_or_none(xml_data, 'contents_kor')
+        self.item_explanation = get_text_or_none(xml_data, 'explanation_kor')
+        self.thubnail = get_text_or_none(xml_data, 'imgUrl')
+
+    def __str__(self):
+        return f"[Palace {self.serial_number}]\n- Palace Code: {self.palace_code}\n" \
+               f"- Detail Code: {self.detail_code}\n- Item Name: {self.item_name}\n" \
+               f"- Item Explanation: {self.item_explanation}\n- Thumbnail: {self.thubnail}"
+
+    def dict(self) -> dict:
+        """ Returns the palace as a dictionary.
+        :return: The palace as a dictionary in the following format:
+            {
+                'serial_number': Serial number of the palace.
+                'palace_code': Palace code of the palace.
+                'detail_code': Detail code of the palace.
+                'item_name': Name of the item.
+                'item_explanation': Explanation of the item.
+                'thubnail': Thumbnail of the item.
+            }
+        """
+
+        return {
+            'serial_number': self.serial_number,
+            'palace_code': self.palace_code,
+            'detail_code': self.detail_code,
+            'item_name': self.item_name,
+            'item_explanation': self.item_explanation,
+            'thubnail': self.thubnail
+        }
+
+
+class PalaceImageItem:
+    """Data model for an image of a palace.
+
+    :ivar index: Index of the image.
+    :ivar name_ko: Korean name of the image.
+    :ivar name_en: English name of the image.
+    :ivar name_ja: Japanese name of the image.
+    :ivar name_zh: Chinese name of the image.
+    :ivar explanation_ko: Korean explanation of the image.
+    :ivar explanation_en: English explanation of the image.
+    :ivar explanation_ja: Japanese explanation of the image.
+    :ivar explanation_zh: Chinese explanation of the image.
+    :ivar url: URL of the image.
+    """
+
+    def __init__(self, xml_data: ElementTree) -> None:
+        self.index = int(get_text_or_none(xml_data, 'imageIndex'))
+        self.name_ko = get_text_or_none(xml_data, 'imageContentsKor')
+        self.name_en = get_text_or_none(xml_data, 'imageContentsEng')
+        self.name_ja = get_text_or_none(xml_data, 'imageContentsJpa')
+        self.name_zh = get_text_or_none(xml_data, 'imageContentsChi')
+        self.explanation_ko = get_text_or_none(xml_data, 'imageExplanationKor')
+        self.explanation_en = get_text_or_none(xml_data, 'imageExplanationEng')
+        self.explanation_ja = get_text_or_none(xml_data, 'imageExplanationJpa')
+        self.explanation_zh = get_text_or_none(xml_data, 'imageExplanationChi')
+        self.url = get_text_or_none(xml_data, 'imageUrl')
+
+    def __str__(self):
+        return f"[Image {self.index}]\n- Name (Korean): {self.name_ko}\n- Name (English): {self.name_en}\n" \
+               f"- Name (Japanese): {self.name_ja}\n- Name (Chinese): {self.name_zh}\n" \
+               f"- Explanation (Korean): {self.explanation_ko}\n- Explanation (English): {self.explanation_en}\n" \
+               f"- Explanation (Japanese): {self.explanation_ja}\n- Explanation (Chinese): {self.explanation_zh}\n" \
+               f"- URL: {self.url}"
+
+    def dict(self) -> dict:
+        """ Returns the image as a dictionary.
+        :return: The image as a dictionary in the following format:
+            {
+                'index': Index of the image.
+                'name_ko': Korean name of the image.
+                'name_en': English name of the image.
+                'name_ja': Japanese name of the image.
+                'name_zh': Chinese name of the image.
+                'explanation_ko': Korean explanation of the image.
+                'explanation_en': English explanation of the image.
+                'explanation_ja': Japanese explanation of the image.
+                'explanation_zh': Chinese explanation of the image.
+                'url': URL of the image.
+            }
+        """
+
+        return {
+            'index': self.index,
+            'name_ko': self.name_ko,
+            'name_en': self.name_en,
+            'name_ja': self.name_ja,
+            'name_zh': self.name_zh,
+            'explanation_ko': self.explanation_ko,
+            'explanation_en': self.explanation_en,
+            'explanation_ja': self.explanation_ja,
+            'explanation_zh': self.explanation_zh,
+            'url': self.url
+        }
+
+
+class PalaceVideoItem:
+    """Data model for a video of a palace.
+
+    :ivar index: Index of the video.
+    :ivar name_ko: Korean name of the video.
+    :ivar name_en: English name of the video.
+    :ivar name_ja: Japanese name of the video.
+    :ivar name_zh: Chinese name of the video.
+    :ivar url_ko: URL to Korean version of the video.
+    :ivar url_en: URL to English version of the video.
+    :ivar url_ja: URL to Japanese version of the video.
+    :ivar url_zh: URL to Chinese version of the video.
+    """
+
+    def __init__(self, xml_data: ElementTree) -> None:
+        """ Initializes the video of a palace.
+
+        :param xml_data: XML data returned from the API.
+        """
+        self.index = int(get_text_or_none(xml_data, 'movieIndex'))
+        self.name_ko = get_text_or_none(xml_data, 'movieContentsKor')
+        self.name_en = get_text_or_none(xml_data, 'movieContentsEng')
+        self.name_ja = get_text_or_none(xml_data, 'movieContentsJpa')
+        self.name_zh = get_text_or_none(xml_data, 'movieContentsChi')
+        self.url_ko = get_text_or_none(xml_data, 'movieUrlKor')
+        self.url_en = get_text_or_none(xml_data, 'movieUrlEng')
+        self.url_ja = get_text_or_none(xml_data, 'movieUrlJpa')
+        self.url_zh = get_text_or_none(xml_data, 'movieUrlChi')
+
+    def __str__(self):
+        return f"[Video {self.index}]\n- Name (Korean): {self.name_ko}\n- Name (English): {self.name_en}\n" \
+               f"- Name (Japanese): {self.name_ja}\n- Name (Chinese): {self.name_zh}\n" \
+               f"- URL (Korean): {self.url_ko}\n- URL (English): {self.url_en}\n" \
+               f"- URL (Japanese): {self.url_ja}\n- URL (Chinese): {self.url_zh}"
+
+    def dict(self) -> dict:
+        """ Returns the video as a dictionary.
+        :return: The video as a dictionary in the following format:
+            {
+                'index': Index of the video.
+                'name_ko': Korean name of the video.
+                'name_en': English name of the video.
+                'name_ja': Japanese name of the video.
+                'name_zh': Chinese name of the video.
+                'url_ko': Korean URL of the video.
+                'url_en': English URL of the video.
+                'url_ja': Japanese URL of the video.
+                'url_zh': Chinese URL of the video.
+            }
+        """
+        return {
+            'index': self.index,
+            'name_ko': self.name_ko,
+            'name_en': self.name_en,
+            'name_ja': self.name_ja,
+            'name_zh': self.name_zh,
+            'url_ko': self.url_ko,
+            'url_en': self.url_en,
+            'url_ja': self.url_ja,
+            'url_zh': self.url_zh
+        }
+
+
+class PalaceDetail:
+    """Data model for a detailed information of a single palace.
+
+    :ivar serial_number: Serial number of the item.
+    :ivar palace_code: Palace code of the palace.
+    :ivar detail_code: Detail code of the palace.
+    :ivar name_ko: Korean name of the palace.
+    :ivar name_en: English name of the palace.
+    :ivar name_ja: Japanese name of the palace.
+    :ivar name_zh: Chinese name of the palace.
+    :ivar explanation_ko: Korean explanation of the palace.
+    :ivar explanation_en: English explanation of the palace.
+    :ivar explanation_ja: Japanese explanation of the palace.
+    :ivar explanation_zh: Chinese explanation of the palace.
+    :ivar thubnail: Thumbnail of the palace.
+    :ivar main_image: List of main images of the palace.
+    :ivar detail_image_list: List of detail images of the palace.
+    :ivar main_video: List of main videos of the palace.
+    :ivar detail_video_list: List of detail videos of the palace.
+    """
+
+    def __init__(self, xml_data: str) -> None:
+        """ Initializes the detailed information of a single palace.
+
+        :param xml_data: XML data returned from the API.
+        """
+
+        root = ElementTree.fromstring(xml_data)
+
+        self.serial_number = int(get_text_or_none(root, 'serial_number'))
+        self.palace_code = int(get_text_or_none(root, 'gung_number'))
+        self.detail_code = int(get_text_or_none(root, 'detail_code'))
+        self.name_ko = get_text_or_none(root, 'contents_kor')
+        self.name_en = get_text_or_none(root, 'contents_eng')
+        self.name_ja = get_text_or_none(root, 'contents_jpa')
+        self.name_zh = get_text_or_none(root, 'contents_chi')
+        self.explanation_ko = get_text_or_none(root, 'explanation_kor')
+        self.explanation_en = get_text_or_none(root, 'explanation_eng')
+        self.explanation_ja = get_text_or_none(root, 'explanation_jpa')
+        self.explanation_zh = get_text_or_none(root, 'explanation_chi')
+        self.thubnail = get_text_or_none(root.find('mainImage'), 'imgUrl')
+
+        # Parsing main images
+        self.main_image = [img.text.strip() for img in root.findall('.//listImg/image')]
+
+        # Parsing main videos
+        self.main_video = [mov.text.strip() for mov in root.findall('.//listMoving/moving')]
+
+        # Parsing detailed image list
+        self.detail_image_list = []
+        for image_info in root.findall('.//imageList/imageInfo'):
+            self.detail_image_list.append(PalaceImageItem(image_info))
+
+        # Parsing detailed video list
+        self.detail_video_list = []
+        for video_info in root.findall('.//movieList/movieInfo'):
+            self.detail_video_list.append(PalaceVideoItem(video_info))
+
+        # Sorting (if needed)
+        self.detail_image_list.sort(key=lambda x: x.index)
+        self.detail_video_list.sort(key=lambda x: x.index)
+
+    def __str__(self):
+        result_str = f"[Palace {self.serial_number}]\n- Palace Code: {self.palace_code}\n" \
+                     f"- Detail Code: {self.detail_code}\n- Name (Korean): {self.name_ko}\n" \
+                     f"- Name (English): {self.name_en}\n- Name (Japanese): {self.name_ja}\n" \
+                     f"- Name (Chinese): {self.name_zh}\n- Explanation (Korean): {self.explanation_ko}\n" \
+                     f"- Explanation (English): {self.explanation_en}\n" \
+                     f"- Explanation (Japanese): {self.explanation_ja}\n" \
+                     f"- Explanation (Chinese): {self.explanation_zh}\n- Thumbnail: {self.thubnail}\n"
+
+        result_str += "\n".join(str(image) for image in self.main_image)
+        result_str += "\n".join(str(image) for image in self.detail_image_list)
+        result_str += "\n".join(str(video) for video in self.main_video)
+        result_str += "\n".join(str(video) for video in self.detail_video_list)
+        return result_str
+
+
 # ===================================================== CONSTANTS =====================================================
 
-class HeritageType(Enum):
+
+class PalaceCode:
+    GYEONGBOKGUNG = 1  # 경복궁
+    CHANGDEOKGUNG = 2  # 창덕궁
+    CHANGGYEONGGUNG = 3  # 창경궁
+    DEOKSUGUNG = 4  # 덕수궁
+    JONGMYO = 5  # 종묘
+
+
+class HeritageType:
     NATIONAL_TREASURE = '11'  # 국보
     TREASURE = '12'  # 보물
     HISTORIC_SITE = '13'  # 사적
@@ -592,7 +853,7 @@ class HeritageType(Enum):
     NORTH_KOREAN_INTANGIBLE_HERITAGE = '80'  # 이북5도무형문화재
 
 
-class EventType(Enum):
+class EventType:
     NIGHTTIME_HERITAGE = '01'  # 문화재야행
     VIVID_HERITAGE = '02'  # 생생문화재
     TRADITIONAL_TEMPLE_HERITAGE = '03'  # 전통산사문화재
@@ -604,7 +865,7 @@ class EventType(Enum):
     OTHERS = '06'  # 기타행사
 
 
-class CityCode(Enum):
+class CityCode:
     SEOUL = '11'  # 서울
     BUSAN = '21'  # 부산
     DAEGU = '22'  # 대구
@@ -625,7 +886,7 @@ class CityCode(Enum):
     NATIONAL = 'ZZ'  # 전국일원
 
 
-class DistrictCode(Enum):
+class DistrictCode:
     pass
 
 

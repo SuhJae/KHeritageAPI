@@ -12,10 +12,12 @@
 #
 
 import requests
-from .models import *
+from .models import (HeritagSearchResultItem, HeritageSearchResults, HeritageDetail, HeritageImageSet, HeritageVideoSet,
+                     HeritageEvent, HeritageType, CityCode, DistrictCode, EventType, Seoul)
+from xml.etree import ElementTree
 
 
-class APIBase:
+class HeritageAPIBase:
     """Base class that includes the global origin URL and a method to send a GET request to the API."""
 
     ORIGIN_URL = 'http://www.cha.go.kr/cha/'
@@ -36,7 +38,7 @@ class APIBase:
         return response
 
 
-class Search(APIBase):
+class HeritageSearcher(HeritageAPIBase):
     """Searches for cultural heritage items using various parameters."""
 
     ENDPOINT = 'SearchKindOpenapiList.do'
@@ -72,20 +74,20 @@ class Search(APIBase):
         if canceled is not None:
             self.params['ccbaCncl'] = 'Y' if canceled else 'N'  # 지정해제여부 (Y, N)
         if heritage_type is not None:  # 지정종목별
-            self.params['ccbaKdcd'] = heritage_type.value
+            self.params['ccbaKdcd'] = heritage_type
         if city_code is not None:
-            self.params['ccbaCtcd'] = city_code.value
+            self.params['ccbaCtcd'] = city_code
         if district_code is not None:
-            self.params['ccbaLcto'] = district_code.value
+            self.params['ccbaLcto'] = district_code
 
-    def commit_search(self) -> SearchResult:
+    def perform_search(self) -> HeritagSearchResultItem:
         """Sends the search request to the API and returns the result."""
         xml_data = self._get(self.ENDPOINT, params=self.params).text
-        return SearchResult(xml_data)
+        return HeritagSearchResultItem(xml_data)
 
     def set_type(self, heritage_type: HeritageType) -> None:
         """Sets the type of the heritage to be searched."""
-        self.params['ccbaKdcd'] = heritage_type.value
+        self.params['ccbaKdcd'] = heritage_type
 
     def set_start_year(self, start_year: int) -> None:
         """Sets the starting year of the heritage to be searched."""
@@ -101,11 +103,11 @@ class Search(APIBase):
 
     def set_province(self, city_code: CityCode) -> None:
         """Sets the province of the heritage to be searched."""
-        self.params['ccbaCtcd'] = city_code.value
+        self.params['ccbaCtcd'] = city_code
 
     def set_city(self, district_code: DistrictCode) -> None:
         """Sets the city of the heritage to be searched."""
-        self.params['ccbaLcto'] = district_code.value
+        self.params['ccbaLcto'] = district_code
 
     def set_linked_number(self, linked_number: str) -> None:
         """Sets the linked number of the heritage to be searched."""
@@ -124,13 +126,13 @@ class Search(APIBase):
         self.params['pageIndex'] = page_index
 
 
-class ItemDetail(APIBase):
+class HeritageInfo(HeritageAPIBase):
     """Using the search result item, searches for detailed information, images, and videos of the item."""
     ENDPOINT_INFO = 'SearchKindOpenapiDt.do'
     ENDPOINT_IMAGE = 'SearchImageOpenapi.do'
     ENDPOINT_VIDEO = 'SearchVideoOpenapi.do'
 
-    def __init__(self, preview: SearchResultItems) -> None:
+    def __init__(self, preview: HeritageSearchResults) -> None:
         """ Loads the search result item and initializes the parameters for the detail search.
 
         :param preview: Search result item object from the search result.
@@ -140,31 +142,31 @@ class ItemDetail(APIBase):
                        'ccbaCtcd': preview.city_code}
         self.preview = preview
 
-    def info(self):
+    def retrieve_detail(self):
         """ Gets the detailed information of the item.
 
         :return: Detail object of the preview item.
         """
         xml_data = self._get(self.ENDPOINT_INFO, params=self.params).text
-        return Detail(xml_data, self.preview)
+        return HeritageDetail(xml_data, self.preview)
 
-    def image(self):
+    def retrieve_image(self):
         """ Gets the images of the item.
 
         :return: Images object of the preview item."""
         xml_data = self._get(self.ENDPOINT_IMAGE, params=self.params).text
-        return Images(xml_data)
+        return HeritageImageSet(xml_data)
 
-    def video(self):
+    def retrieve_video(self):
         """ Gets the videos of the item.
 
         :return: Videos object of the preview item.
         """
         xml_data = self._get(self.ENDPOINT_VIDEO, params=self.params).text
-        return Videos(xml_data)
+        return HeritageVideoSet(xml_data)
 
 
-class EventSearch(APIBase):
+class EventSearcher(HeritageAPIBase):
     """ Searches for events using various parameters."""
     ENDPOINT = "openapi/selectEventListOpenapi.do"
 
@@ -181,9 +183,9 @@ class EventSearch(APIBase):
         if search_word is not None:
             self.params['searchWrd'] = search_word
         if event_type is not None:
-            self.params['siteCode'] = event_type.value
+            self.params['siteCode'] = event_type
 
-    def commit_search(self) -> list[Event]:
+    def perform_search(self) -> list[HeritageEvent]:
         """ Sends the search request to the API and returns the result."""
         xml_data = self._get(self.ENDPOINT, params=self.params).text
         root = ElementTree.fromstring(xml_data)
@@ -192,7 +194,7 @@ class EventSearch(APIBase):
         items = []
         for item_element in root.findall('.//item'):
             # Assuming Event is a class that takes an XML element and parses it
-            items.append(Event(item_element))
+            items.append(HeritageEvent(item_element))
 
         return items
 
@@ -200,24 +202,24 @@ class EventSearch(APIBase):
 # Example Usage
 if __name__ == '__main__':
     # Search for 15 historic sites in Seoul's Jongno district
-    search = Search(result_count=15, city_code=CityCode.SEOUL, district_code=Seoul.JONGNRO, canceled=False,
-                    heritage_type=HeritageType.HISTORIC_SITE)
-    result = search.commit_search()
+    search = HeritageSearcher(result_count=15, city_code=CityCode.SEOUL, district_code=Seoul.JONGNRO, canceled=False,
+                              heritage_type=HeritageType.HISTORIC_SITE)
+    result = search.perform_search()
 
     # Get detailed information on the first item
-    detail = ItemDetail(result.items[0])
-    detail_info = detail.info()
+    detail = HeritageInfo(result.items[0])
+    detail_info = detail.retrieve_detail()
     print(detail_info)
 
     # Also, you can get images and videos of the item
-    images = detail.image()
+    images = detail.retrieve_image()
     print(images)
 
-    videos = detail.video()
+    videos = detail.retrieve_video()
     print(videos)
 
     # Search for events in 2023, December
-    event_search = EventSearch(2023, 12)
-    events = event_search.commit_search()
+    event_search = EventSearcher(2023, 12)
+    events = event_search.perform_search()
     for event in events:
         print(event)
