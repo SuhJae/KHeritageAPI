@@ -1,0 +1,12 @@
+<result>
+  <total>1</total>
+  <list>
+    <serial_number>0</serial_number>
+    <gung_number>3</gung_number>
+    <detail_code>0</detail_code>
+    <contents_kor>홍화문</contents_kor>
+    <explanation_kor>설명</explanation_kor>
+    <imgUrl>https://www.heritage.go.kr/sample.jpg</imgUrl>
+    <link>https://www.heritage.go.kr/heri/gungDetail/gogungDetailOpenApi.do?serial_number=0&amp;detail_code=0&amp;gung_number=3</link>
+  </list>
+</result>

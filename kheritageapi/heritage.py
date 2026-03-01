@@ -1,225 +1,178 @@
-#
-# Main module of the Cultural Heritage API.
-#
-# This module provides easy abstraction of the Cultural Heritage API.
-#
-# Official API Documentation:
-# https://www.cha.go.kr/html/HtmlPage.do?pg=/publicinfo/pbinfo3_0202.jsp&mn=NS_04_04_03
-#
-# Developed with the enthusiasm of Jay Suh (jay@joseon.space) from the non-profit organization Joseon Space
-# (https://joseon.space). This module aims to facilitate efficient and accurate access  to Korea's rich cultural
-# heritage data for developers and researchers globally.
-#
+"""Client wrappers for the Cultural Heritage APIs."""
+
+from __future__ import annotations
+
+from typing import Optional
+from xml.etree import ElementTree
 
 import requests
-from .models import (HeritagSearchResultItem, HeritageSearchResults, HeritageDetail, HeritageImageSet, HeritageVideoSet,
-                     HeritageEvent, HeritageType, CityCode, DistrictCode, EventType, Seoul)
-from xml.etree import ElementTree
+
+from .models import (
+    CityCode,
+    DistrictCode,
+    EventType,
+    HeritageDetail,
+    HeritageEvent,
+    HeritageImageSet,
+    HeritageSearchResult,
+    HeritageSearchResults,
+    HeritageType,
+    HeritageVideoSet,
+)
 
 
 class HeritageAPIBase:
-    """Base class that includes the global origin URL and a method to send a GET request to the API."""
+    """Base API client with shared session and request handling."""
 
-    ORIGIN_URL = 'http://www.cha.go.kr/cha/'
+    ORIGIN_URL = "https://www.cha.go.kr/cha/"
 
-    def __init__(self) -> None:
-        """ Initializes the session object for the API."""
+    def __init__(self, timeout: float = 15.0) -> None:
         self.session = requests.Session()
+        self.timeout = timeout
 
-    def _get(self, endpoint: str, params: dict = None) -> requests.Response:
-        """ Sends a GET request to the API.
-
-        :param endpoint: Endpoint of the API.
-        :param params: Parameters to be sent with the request.
-        :return: Requests response object.
-        """
-        response = self.session.get(self.ORIGIN_URL + endpoint, params=params)
+    def _get(self, endpoint: str, params: Optional[dict] = None) -> requests.Response:
+        response = self.session.get(self.ORIGIN_URL + endpoint, params=params, timeout=self.timeout)
         response.raise_for_status()
         return response
 
 
 class HeritageSearcher(HeritageAPIBase):
-    """Searches for cultural heritage items using various parameters."""
+    ENDPOINT = "SearchKindOpenapiList.do"
 
-    ENDPOINT = 'SearchKindOpenapiList.do'
+    def __init__(
+        self,
+        heritage_type: Optional[str] = None,
+        start_year: Optional[int] = None,
+        end_year: Optional[int] = None,
+        ko_name: Optional[str] = None,
+        city_code: Optional[str] = None,
+        district_code: Optional[str] = None,
+        linked_number: Optional[str] = None,
+        canceled: Optional[bool] = None,
+        result_count: int = 10,
+        page_index: int = 1,
+        era_code: Optional[str] = None,
+        modified_start: Optional[str] = None,
+        modified_end: Optional[str] = None,
+        timeout: float = 15.0,
+    ) -> None:
+        super().__init__(timeout=timeout)
 
-    def __init__(self, heritage_type: HeritageType = None, start_year: int = None, end_year: int = None,
-                 ko_name: str = None, city_code: CityCode = None, district_code: DistrictCode = None,
-                 linked_number: str = None, canceled: bool = None, result_count: int = 10, page_index: int = 1) -> None:
-        """ Initializes the search parameters.
+        self.params: dict[str, object] = {"pageUnit": result_count, "pageIndex": page_index}
 
-        :param heritage_type: Type of the heritage.
-        :param start_year: Starting year of the heritage.
-        :param end_year: Ending year of the heritage.
-        :param ko_name: Korean name of the heritage.
-        :param city_code: City code of the heritage.
-        :param district_code: District code of the heritage.
-        :param linked_number: Linked number of the heritage.
-        :param canceled: Whether the heritage is removed from the registered list of cultural heritage.
-        :param result_count: Number of results to be returned.
-        :param page_index: Index of the page to be returned.
-        """
-        super().__init__()
-
-        self.params = {'pageUnit': result_count, 'pageIndex': page_index}
-
-        if start_year is not None:  # 지정연도 시작 (int)
-            self.params['stCcbaAsdt'] = start_year
-        if end_year is not None:  # 지정연도 끝 (int)
-            self.params['enCcbaAsdt'] = end_year
-        if ko_name is not None:  # 문화재명(국문)
-            self.params['ccbaMnm1'] = ko_name
-        if linked_number is not None:  # 문화재연계번호
-            self.params['ccbaCpno'] = linked_number
+        if start_year is not None:
+            self.params["stCcbaAsdt"] = start_year
+        if end_year is not None:
+            self.params["enCcbaAsdt"] = end_year
+        if ko_name is not None:
+            self.params["ccbaMnm1"] = ko_name
+        if linked_number is not None:
+            self.params["ccbaCpno"] = linked_number
         if canceled is not None:
-            self.params['ccbaCncl'] = 'Y' if canceled else 'N'  # 지정해제여부 (Y, N)
-        if heritage_type is not None:  # 지정종목별
-            self.params['ccbaKdcd'] = heritage_type
+            self.params["ccbaCncl"] = "Y" if canceled else "N"
+        if heritage_type is not None:
+            self.params["ccbaKdcd"] = heritage_type
         if city_code is not None:
-            self.params['ccbaCtcd'] = city_code
+            self.params["ccbaCtcd"] = city_code
         if district_code is not None:
-            self.params['ccbaLcto'] = district_code
+            self.params["ccbaLcto"] = district_code
+        if era_code is not None:
+            self.params["ccbaPcd1"] = era_code
+        if modified_start is not None:
+            self.params["stRegDt"] = modified_start
+        if modified_end is not None:
+            self.params["enRegDt"] = modified_end
 
-    def perform_search(self) -> HeritagSearchResultItem:
-        """Sends the search request to the API and returns the result."""
+    def perform_search(self) -> HeritageSearchResult:
         xml_data = self._get(self.ENDPOINT, params=self.params).text
-        return HeritagSearchResultItem(xml_data)
+        return HeritageSearchResult(xml_data)
 
     def set_type(self, heritage_type: HeritageType) -> None:
-        """Sets the type of the heritage to be searched."""
-        self.params['ccbaKdcd'] = heritage_type
+        self.params["ccbaKdcd"] = heritage_type
 
     def set_start_year(self, start_year: int) -> None:
-        """Sets the starting year of the heritage to be searched."""
-        self.params['stCcbaAsdt'] = start_year
+        self.params["stCcbaAsdt"] = start_year
 
     def set_end_year(self, end_year: int) -> None:
-        """Sets the ending year of the heritage to be searched."""
-        self.params['enCcbaAsdt'] = end_year
+        self.params["enCcbaAsdt"] = end_year
 
     def set_ko_name(self, ko_name: str) -> None:
-        """Sets the Korean name of the heritage to be searched."""
-        self.params['ccbaMnm1'] = ko_name
+        self.params["ccbaMnm1"] = ko_name
 
     def set_province(self, city_code: CityCode) -> None:
-        """Sets the province of the heritage to be searched."""
-        self.params['ccbaCtcd'] = city_code
+        self.params["ccbaCtcd"] = city_code
 
     def set_city(self, district_code: DistrictCode) -> None:
-        """Sets the city of the heritage to be searched."""
-        self.params['ccbaLcto'] = district_code
+        self.params["ccbaLcto"] = district_code
 
     def set_linked_number(self, linked_number: str) -> None:
-        """Sets the linked number of the heritage to be searched."""
-        self.params['ccbaCpno'] = linked_number
+        self.params["ccbaCpno"] = linked_number
 
     def set_canceled(self, canceled: bool) -> None:
-        """Sets whether the heritage to be searched is removed from the registered list of cultural heritage."""
-        self.params['ccbaCncl'] = 'Y' if canceled else 'N'
+        self.params["ccbaCncl"] = "Y" if canceled else "N"
 
     def set_limit(self, page_unit: int) -> None:
-        """Sets the number of results to be returned."""
-        self.params['pageUnit'] = page_unit
+        self.params["pageUnit"] = page_unit
 
     def set_page_index(self, page_index: int) -> None:
-        """Sets the index of the page to be returned."""
-        self.params['pageIndex'] = page_index
+        self.params["pageIndex"] = page_index
+
+    def set_era_code(self, era_code: str) -> None:
+        self.params["ccbaPcd1"] = era_code
+
+    def set_modified_start(self, modified_start: str) -> None:
+        self.params["stRegDt"] = modified_start
+
+    def set_modified_end(self, modified_end: str) -> None:
+        self.params["enRegDt"] = modified_end
 
 
 class HeritageInfo(HeritageAPIBase):
-    """Using the search result item, searches for detailed information, images, and videos of the item."""
-    ENDPOINT_INFO = 'SearchKindOpenapiDt.do'
-    ENDPOINT_IMAGE = 'SearchImageOpenapi.do'
-    ENDPOINT_VIDEO = 'SearchVideoOpenapi.do'
+    ENDPOINT_INFO = "SearchKindOpenapiDt.do"
+    ENDPOINT_IMAGE = "SearchImageOpenapi.do"
+    ENDPOINT_VIDEO = "SearchVideoOpenapi.do"
 
-    def __init__(self, preview: HeritageSearchResults) -> None:
-        """ Loads the search result item and initializes the parameters for the detail search.
-
-        :param preview: Search result item object from the search result.
-        """
-        super().__init__()
-        self.params = {'ccbaKdcd': preview.type_code, 'ccbaAsno': preview.management_number,
-                       'ccbaCtcd': preview.city_code}
+    def __init__(self, preview: HeritageSearchResults, timeout: float = 15.0) -> None:
+        super().__init__(timeout=timeout)
+        self.params = {
+            "ccbaKdcd": preview.type_code,
+            "ccbaAsno": preview.management_number,
+            "ccbaCtcd": preview.city_code,
+        }
         self.preview = preview
 
-    def retrieve_detail(self):
-        """ Gets the detailed information of the item.
-
-        :return: Detail object of the preview item.
-        """
+    def retrieve_detail(self) -> HeritageDetail:
         xml_data = self._get(self.ENDPOINT_INFO, params=self.params).text
         return HeritageDetail(xml_data, self.preview)
 
-    def retrieve_image(self):
-        """ Gets the images of the item.
-
-        :return: Images object of the preview item."""
+    def retrieve_image(self) -> HeritageImageSet:
         xml_data = self._get(self.ENDPOINT_IMAGE, params=self.params).text
         return HeritageImageSet(xml_data)
 
-    def retrieve_video(self):
-        """ Gets the videos of the item.
-
-        :return: Videos object of the preview item.
-        """
+    def retrieve_video(self) -> HeritageVideoSet:
         xml_data = self._get(self.ENDPOINT_VIDEO, params=self.params).text
         return HeritageVideoSet(xml_data)
 
 
 class EventSearcher(HeritageAPIBase):
-    """ Searches for events using various parameters."""
     ENDPOINT = "openapi/selectEventListOpenapi.do"
 
-    def __init__(self, year: int, month: int, search_word: str = None, event_type: EventType = None) -> None:
-        """ Initializes the search parameters.
-
-        :param year: Year of the event.
-        :param month: Month of the event.
-        :param search_word: Search word of the event.
-        :param event_type: Type of the event.
-        """
-        super().__init__()
-        self.params = {'searchYear': year, 'searchMonth': month}
+    def __init__(
+        self,
+        year: int,
+        month: int,
+        search_word: Optional[str] = None,
+        event_type: Optional[EventType] = None,
+        timeout: float = 15.0,
+    ) -> None:
+        super().__init__(timeout=timeout)
+        self.params: dict[str, object] = {"searchYear": year, "searchMonth": month}
         if search_word is not None:
-            self.params['searchWrd'] = search_word
+            self.params["searchWrd"] = search_word
         if event_type is not None:
-            self.params['siteCode'] = event_type
+            self.params["siteCode"] = event_type
 
     def perform_search(self) -> list[HeritageEvent]:
-        """ Sends the search request to the API and returns the result."""
         xml_data = self._get(self.ENDPOINT, params=self.params).text
         root = ElementTree.fromstring(xml_data)
-
-        # iterate through the items in the XML
-        items = []
-        for item_element in root.findall('.//item'):
-            # Assuming Event is a class that takes an XML element and parses it
-            items.append(HeritageEvent(item_element))
-
-        return items
-
-
-# Example Usage
-if __name__ == '__main__':
-    # Search for 15 historic sites in Seoul's Jongno district
-    search = HeritageSearcher(result_count=15, city_code=CityCode.SEOUL, district_code=Seoul.JONGNRO, canceled=False,
-                              heritage_type=HeritageType.HISTORIC_SITE)
-    result = search.perform_search()
-
-    # Get detailed information on the first item
-    detail = HeritageInfo(result.items[0])
-    detail_info = detail.retrieve_detail()
-    print(detail_info)
-
-    # Also, you can get images and videos of the item
-    images = detail.retrieve_image()
-    print(images)
-
-    videos = detail.retrieve_video()
-    print(videos)
-
-    # Search for events in 2023, December
-    event_search = EventSearcher(2023, 12)
-    events = event_search.perform_search()
-    for event in events:
-        print(event)
+        return [HeritageEvent(item_element) for item_element in root.findall(".//item")]

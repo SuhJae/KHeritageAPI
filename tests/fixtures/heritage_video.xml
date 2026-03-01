@@ -1,0 +1,12 @@
+<result>
+  <totalCnt>2</totalCnt>
+  <ccbaKdcd>11</ccbaKdcd>
+  <ccbaAsno>0000010000000</ccbaAsno>
+  <ccbaCtcd>11</ccbaCtcd>
+  <item>
+    <sn>1</sn>
+    <videoUrl>http://116.67.83.213/webdata/file_data/media_data/videos/</videoUrl>
+    <sn>2</sn>
+    <videoUrl>http://116.67.83.213/valid.mp4</videoUrl>
+  </item>
+</result>

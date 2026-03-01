@@ -8,9 +8,9 @@ KHeritageAPI는 문화재청이 제공하는 [한국 문화유산 API](https://w
 
 ## Development Status | 개발 상태 🛠️
 
-This project is currently **under pre-release development**. The API is subject to change without notice, and compatibility with previous versions is not guaranteed.
+This project is now maintained as a stable package and tracks the current 국가유산청 API schema, including event response compatibility updates added in 2.0.
 
-이 프로젝트는 현재 **프리 릴리즈 개발 중**입니다. API는 사전 예고 없이 변경될 수 있으며, 이전 버전과의 호환성은 보장되지 않습니다.
+이 프로젝트는 현재 안정적으로 유지보수되고 있으며, 2.0에서 국가유산청 최신 API 스키마(행사 응답 필드 변경 포함)를 반영했습니다.
 
 ## Installation | 설치 💿
 
@@ -81,7 +81,6 @@ print(limit)
 print(offset)
 ```
 
-```
 
 **After | 이후 🤣**
 ```Python
@@ -150,6 +149,20 @@ videos = detail.retrieve_video()
 print(videos)
 ```
 
+Use optional filtering parameters introduced for newer docs fields (`ccbaPcd1`, `stRegDt`, `enRegDt`):
+
+최신 문서 필드(`ccbaPcd1`, `stRegDt`, `enRegDt`)를 위한 선택 파라미터도 사용할 수 있습니다:
+
+```python
+from kheritageapi.heritage import HeritageSearcher
+
+search = HeritageSearcher(
+    era_code="10",                    # ccbaPcd1
+    modified_start="20250101000000",  # stRegDt
+    modified_end="20251231235959",    # enRegDt
+)
+```
+
 Search for events in December 2023, and print detailed information for the all the items.
 
 2023년 12월에 있는 행사를 검색하고, 검색 결과를 출력하기
@@ -199,4 +212,3 @@ developers and researchers around the world.
 
 비영리 단체 조선 스페이스([joseon.space](https://joseon.space))의 서재웅 (jay@joseon.space)의 열정으로 개발된 프로젝트 입니다.
 이 모듈은 전 세계의 개발자와 연구자들이 한국의 문화유산에 쉽게 접근할 수 있도록 목표로 합니다.
-

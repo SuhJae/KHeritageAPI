@@ -1,219 +1,139 @@
-#
-# Data Models and Enums for the Cultural Heritage API
-#
-# This module provides data models and enumerations for handling API parameters in English, enhancing developer
-# convenience and code readability. Enum values are sourced from the official API documentation, reflecting
-# the latest data as of November 23, 2023.
-#
-# Official API Documentation:
-# https://www.cha.go.kr/html/HtmlPage.do?pg=/publicinfo/pbinfo3_0202.jsp
-#
-# Developed with the enthusiasm of Jay Suh (jay@joseon.space) from the non-profit organization Joseon Space
-# (https://joseon.space). This module aims to facilitate efficient and accurate access  to Korea's rich cultural
-# heritage data for developers and researchers globally.
-#
+"""Data models and constants for KHeritage API wrappers."""
+
+from __future__ import annotations
 
 import time
+from dataclasses import dataclass
+from typing import Any, Iterable, Optional
 from xml.etree import ElementTree
-from typing import Optional
 
 
-def get_text_or_none(element: ElementTree, tag: str) -> Optional[str]:
-    """ Helper function to get text from an XML element or None if the element is not found.
-
-    :param element: XML element to search.
-    :param tag: Tag of the element to search.
-    :return: Text of the element or None if the element is not found.
-    """
-    found = element.find(tag)
-    if found is None:
-        return None
-    if found.text is None:
+def _text(element: Optional[ElementTree.Element], tag: str, *fallback_tags: str) -> Optional[str]:
+    """Return stripped text for the first available tag."""
+    if element is None:
         return None
 
-    return found.text.strip()
+    for name in (tag, *fallback_tags):
+        found = element.find(name)
+        if found is not None and found.text is not None:
+            value = found.text.strip()
+            if value:
+                return value
+    return None
 
 
+def get_text_or_none(element: Optional[ElementTree.Element], tag: str) -> Optional[str]:
+    """Backward-compatible helper kept for external callers."""
+    return _text(element, tag)
+
+
+def _parse_struct_time(value: Optional[str], fmt: str) -> Optional[time.struct_time]:
+    if not value:
+        return None
+    try:
+        return time.strptime(value, fmt)
+    except ValueError:
+        return None
+
+
+@dataclass
 class HeritageSearchResults:
-    """ Data model for a single search result item.
-    This class is used internally by the SearchResult class for storing search results.
+    sequence_number: Optional[str]
+    uid: Optional[str]
+    type: Optional[str]
+    name: Optional[str]
+    name_hanja: Optional[str]
+    city: Optional[str]
+    district: Optional[str]
+    manager: Optional[str]
+    type_code: Optional[str]
+    city_code: Optional[str]
+    management_number: Optional[str]
+    canceled: bool
+    linkage_number: Optional[str]
+    longitude: Optional[str]
+    latitude: Optional[str]
+    last_modified: Optional[time.struct_time]
 
-    :ivar sequence_number: Sequence number of the search result item.
-    :ivar uid: Unique ID of the search result item.
-    :ivar type: Type of the search result item.
-    :ivar name: Korean name of the search result item.
-    :ivar name_hanja: Name of the search result item in Chinese characters.
-    :ivar city: City name of the search result item.
-    :ivar district: District name of the search result item.
-    :ivar manager: Administrator name of the search result item.
-    :ivar type_code: Type code of the search result item.
-    :ivar city_code: City code of the search result item.
-    :ivar management_number: Management number of the search result item.
-    :ivar canceled: Whether the search result item is removed from the registered list of cultural heritage.
-    :ivar linkage_number: Linkage number of the search result item.
-    :ivar longitude: Longitude of the search result item.
-    :ivar latitude: Latitude of the search result item.
-    :ivar last_modified: Last modified date of the search result item.
-    """
+    @classmethod
+    def from_xml(cls, element: ElementTree.Element) -> "HeritageSearchResults":
+        cncl = _text(element, "ccbaCncl")
+        return cls(
+            sequence_number=_text(element, "sn"),
+            uid=_text(element, "no"),
+            type=_text(element, "ccmaName"),
+            name=_text(element, "ccbaMnm1"),
+            name_hanja=_text(element, "ccbaMnm2"),
+            city=_text(element, "ccbaCtcdNm"),
+            district=_text(element, "ccsiName"),
+            manager=_text(element, "ccbaAdmin"),
+            type_code=_text(element, "ccbaKdcd"),
+            city_code=_text(element, "ccbaCtcd"),
+            management_number=_text(element, "ccbaAsno"),
+            canceled=(cncl == "Y"),
+            linkage_number=_text(element, "ccbaCpno"),
+            longitude=_text(element, "longitude"),
+            latitude=_text(element, "latitude"),
+            last_modified=_parse_struct_time(_text(element, "regDt"), "%Y-%m-%d %H:%M:%S"),
+        )
 
-    def __init__(self, element: ElementTree) -> None:
-        """ Initializes the search result item.
-
-        :param element: XML element of the search result item.
-        """
-
-        self.sequence_number = element.find('sn').text
-        self.uid = element.find('no').text
-        self.type = element.find('ccmaName').text
-        self.name = element.find('ccbaMnm1').text
-        self.name_hanja = element.find('ccbaMnm2').text
-        self.city = element.find('ccbaCtcdNm').text
-        self.district = element.find('ccsiName').text
-        self.manager = element.find('ccbaAdmin').text
-        self.type_code = element.find('ccbaKdcd').text
-        self.city_code = element.find('ccbaCtcd').text
-        self.management_number = element.find('ccbaAsno').text
-        self.canceled = element.find('ccbaCncl').text == 'Y'
-        self.linkage_number = element.find('ccbaCpno').text
-        self.longitude = element.find('longitude').text
-        self.latitude = element.find('latitude').text
-        self.last_modified = time.strptime(element.find('regDt').text, '%Y-%m-%d %H:%M:%S')
-
-    def __str__(self) -> str:
-        return f"[Item {self.sequence_number}]\n- UID: {self.uid}\n- Type: {self.type}\n- Name: {self.name}\n" \
-               f"- Name (Hanja): {self.name_hanja}\n- City: {self.city}\n- District: {self.district}\n" \
-               f"- Administrator: {self.manager}\n- Type Code: {self.type_code}\n" \
-               f"- City Code: {self.city_code}\n- Management Number: {self.management_number}\n" \
-               f"- Canceled: {self.canceled}\n- Linkage Number: {self.linkage_number}\n" \
-               f"- Longitude: {self.longitude}\n- Latitude: {self.latitude}\n" \
-               f"- Last Modified: {self.last_modified}"
-
-    def __getitem__(self, item):
+    def __getitem__(self, item: str) -> Any:
         return self.dict()[item]
 
-    def dict(self) -> dict:
-        """ Returns the search result item as a dictionary.
-
-        :return: The search result item as a dictionary in the following format:
-            {
-                'sequence_number': Sequence number of the search result item.
-                'uid': Unique ID of the search result item.
-                'type': Type of the search result item.
-                'name': Korean name of the search result item.
-                'name_hanja': Name of the search result item in Chinese characters.
-                'city': City name of the search result item.
-                'district': District name of the search result item.
-                'administrator': Administrator name of the search result item.
-                'type_code': Type code of the search result item.
-                'city_code': City code of the search result item.
-                'management_number': Management number of the search result item.
-                'canceled': Whether the search result item is removed from the registered list of cultural heritage.
-                'linkage_number': Linkage number of the search result item.
-                'longitude': Longitude of the search result item.
-                'latitude': Latitude of the search result item.
-                'last_modified': Last modified date of the search result item.
-            }
-        """
+    def dict(self) -> dict[str, Any]:
         return {
-            'sequence_number': self.sequence_number,
-            'uid': self.uid,
-            'type': self.type,
-            'name': self.name,
-            'name_hanja': self.name_hanja,
-            'city': self.city,
-            'district': self.district,
-            'administrator': self.manager,
-            'type_code': self.type_code,
-            'city_code': self.city_code,
-            'management_number': self.management_number,
-            'canceled': self.canceled,
-            'linkage_number': self.linkage_number,
-            'longitude': self.longitude,
-            'latitude': self.latitude,
-            'last_modified': self.last_modified
+            "sequence_number": self.sequence_number,
+            "uid": self.uid,
+            "type": self.type,
+            "name": self.name,
+            "name_hanja": self.name_hanja,
+            "city": self.city,
+            "district": self.district,
+            "administrator": self.manager,
+            "type_code": self.type_code,
+            "city_code": self.city_code,
+            "management_number": self.management_number,
+            "canceled": self.canceled,
+            "linkage_number": self.linkage_number,
+            "longitude": self.longitude,
+            "latitude": self.latitude,
+            "last_modified": self.last_modified,
         }
 
 
-class HeritagSearchResultItem:
-    """ Data model for holding multiple search results returned from the API.
-    Iteration or indexing of this class will return SearchResultItems.
-
-    :ivar hits: Total number of results available from the API.
-    :ivar limit: Number of results per page.
-    :ivar page_index: Index of the current page.
-    :ivar items: List of search result items.
-    """
+class HeritageSearchResult:
+    """Container for list search response."""
 
     def __init__(self, xml_data: str) -> None:
-        """ Initializes the search result.
-
-        :param xml_data: XML data returned from the API.
-        """
         root = ElementTree.fromstring(xml_data)
-        self.hits = root.find('totalCnt').text
-        self.limit = root.find('pageUnit').text
-        self.page_index = root.find('pageIndex').text
-        self.items = [HeritageSearchResults(item) for item in root.findall('.//item')]
+        self.hits = _text(root, "totalCnt") or "0"
+        self.limit = _text(root, "pageUnit") or "0"
+        self.page_index = _text(root, "pageIndex") or "1"
+        self.items = [HeritageSearchResults.from_xml(item) for item in root.findall(".//item")]
 
-    def __str__(self):
-        result_str = f"Total Count: {self.hits}\nPage Unit: {self.limit}\nPage Index: {self.page_index}\n\n"
-        result_str += "\n".join(str(item) for item in self.items)
-        return result_str
-
-    def __getitem__(self, item):
+    def __getitem__(self, item: int) -> HeritageSearchResults:
         return self.items[item]
 
-    def __iter__(self):
+    def __iter__(self) -> Iterable[HeritageSearchResults]:
         return iter(self.items)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.items)
 
     def pages(self) -> int:
-        """
-        The number of pages that are available from the API.
-        :return: The number of pages that are available from the API.
-        """
-        return int(self.hits) // int(self.limit) + 1
+        hits = int(self.hits)
+        limit = int(self.limit)
+        return 0 if limit == 0 else (hits + limit - 1) // limit
+
+
+# Backward compatibility typo in 1.x
+HeritagSearchResultItem = HeritageSearchResult
 
 
 class HeritageDetail:
-    """ Data model for a detailed information of a single cultural heritage item.
-
-    :ivar uid: Unique ID of the search result item.
-    :ivar name: Korean name of the search result item.
-    :ivar name_hanja: Name of the search result item in Chinese characters.
-    :ivar city: City name of the search result item.
-    :ivar district: District name of the search result item.
-    :ivar canceled: Whether the search result item is removed from the registered list of cultural heritage.
-    :ivar last_modified: Last modified date of the search result item.
-    :ivar type_code: Type code of the search result item.
-    :ivar management_number: Management number of the search result item.
-    :ivar city_code: City code of the search result item.
-    :ivar linkage_number: Linkage number of the search result item.
-    :ivar longitude: Longitude of the search result item.
-    :ivar latitude: Latitude of the search result item.
-    :ivar type: Type of the search result item.
-    :ivar category1: Parent category of the category2. The broadest category.
-    :ivar category2: Child category of the category1. The second broadest category.
-    :ivar category3: Child category of the category2. The second narrowest category.
-    :ivar category4: Child category of the category3. The narrowest category.
-    :ivar quantity: Quantity of the cultural heritage item.
-    :ivar registered_date: Registered date of the cultural heritage item.
-    :ivar location_description: Location description of the cultural heritage item.
-    :ivar era: Era of the cultural heritage item.
-    :ivar owner: Owner of the cultural heritage item.
-    :ivar manager: Manager of the cultural heritage item.
-    :ivar thumbnail: Thumbnail of the cultural heritage item.
-    :ivar content: Content of the cultural heritage item.
-    """
-
     def __init__(self, xml_data: str, preview: HeritageSearchResults) -> None:
-        """ Initializes the detailed information of a single cultural heritage item.
-
-        :param xml_data: XML data returned from the API.
-        :param preview: Preview information of the cultural heritage item used to search this item.
-        """
+        root = ElementTree.fromstring(xml_data)
+        item = root.find("item")
 
         self.uid = preview.uid
         self.name = preview.name
@@ -223,606 +143,338 @@ class HeritageDetail:
         self.canceled = preview.canceled
         self.last_modified = preview.last_modified
 
-        root = ElementTree.fromstring(xml_data)
-        item = root.find('item')
+        self.type_code = _text(root, "ccbaKdcd")
+        self.management_number = _text(root, "ccbaAsno")
+        self.city_code = _text(root, "ccbaCtcd")
+        self.linkage_number = _text(root, "ccbaCpno")
+        self.longitude = _text(root, "longitude")
+        self.latitude = _text(root, "latitude")
+        self.type = _text(item, "ccmaName")
+        self.category1 = _text(item, "gcodeName")
+        self.category2 = _text(item, "bcodeName")
+        self.category3 = _text(item, "mcodeName")
+        self.category4 = _text(item, "scodeName")
+        self.quantity = _text(item, "ccbaQuan")
+        self.registered_date = _parse_struct_time(_text(item, "ccbaAsdt"), "%Y%m%d")
+        self.location_description = _text(item, "ccbaLcad")
+        self.era = _text(item, "ccceName")
+        self.owner = _text(item, "ccbaPoss")
+        self.manager = _text(item, "ccbaAdmin")
+        self.thumbnail = _text(item, "imageUrl")
+        self.content = _text(item, "content")
 
-        self.type_code = get_text_or_none(root, 'ccbaKdcd')
-        self.management_number = get_text_or_none(root, 'ccbaAsno')
-        self.city_code = get_text_or_none(root, 'ccbaCtcd')
-        self.linkage_number = get_text_or_none(root, 'ccbaCpno')
-        self.longitude = get_text_or_none(root, 'longitude')
-        self.latitude = get_text_or_none(root, 'latitude')
-        self.type = get_text_or_none(item, 'ccmaName')
-        self.category1 = get_text_or_none(item, 'gcodeName')
-        self.category2 = get_text_or_none(item, 'bcodeName')
-        self.category3 = get_text_or_none(item, 'mcodeName')
-        self.category4 = get_text_or_none(item, 'scodeName')
-        self.quantity = get_text_or_none(item, 'ccbaQuan')
-
-        # Special handling for date
-        date_str = get_text_or_none(item, 'ccbaAsdt')
-        self.registered_date = time.strptime(date_str, '%Y%m%d') if date_str else None
-
-        self.location_description = get_text_or_none(item, 'ccbaLcad')
-        self.era = get_text_or_none(item, 'ccceName')
-        self.owner = get_text_or_none(item, 'ccbaPoss')
-        self.manager = get_text_or_none(item, 'ccbaAdmin')
-        self.thumbnail = get_text_or_none(item, 'imageUrl')
-        self.content = get_text_or_none(item, 'content')
-
-    def __str__(self):
-        return f"- UID: {self.uid}\n- Type: {self.type}\n- Name: {self.name}\n" \
-               f"- Name (Hanja): {self.name_hanja}\n- City: {self.city}\n- District: {self.district}\n" \
-               f"- Administrator: {self.manager}\n- Type Code: {self.type_code}\n" \
-               f"- City Code: {self.city_code}\n- Management Number: {self.management_number}\n" \
-               f"- Canceled: {self.canceled}\n- Linkage Number: {self.linkage_number}\n" \
-               f"- Longitude: {self.longitude}\n- Latitude: {self.latitude}\n" \
-               f"- Last Modified: {self.last_modified}\n- Category 1: {self.category1}\n" \
-               f"- Category 2: {self.category2}\n- Category 3: {self.category3}\n" \
-               f"- Category 4: {self.category4}\n- Quantity: {self.quantity}\n" \
-               f"- Registered Date: {self.registered_date}\n- Location Description: {self.location_description}\n" \
-               f"- Era: {self.era}\n- Owner: {self.owner}\n- Thumbnail: {self.thumbnail}\n" \
-               f"- Content: {self.content}"
-
-    def __getitem__(self, item):
+    def __getitem__(self, item: str) -> Any:
         return self.dict()[item]
 
-    def dict(self) -> dict:
-        """ Returns the detailed information of the cultural heritage item as a dictionary.
-
-        :return: The detailed information of the cultural heritage item as a dictionary in the following format:
-            {
-                'uid': Unique ID of the search result item.
-                'name': Korean name of the search result item.
-                'name_hanja': Name of the search result item in Chinese characters.
-                'city': City name of the search result item.
-                'district': District name of the search result item.
-                'canceled': Whether the search result item is removed from the registered list of cultural heritage.
-                'last_modified': Last modified date of the search result item.
-                'type_code': Type code of the search result item.
-                'management_number': Management number of the search result item.
-                'city_code': City code of the search result item.
-                'linkage_number': Linkage number of the search result item.
-                'longitude': Longitude of the search result item.
-                'latitude': Latitude of the search result item.
-                'type': Type of the search result item.
-                'category1': Parent category of the category2. The broadest category.
-                'category2': Child category of the category1. The second broadest category.
-                'category3': Child category of the category2. The second narrowest category.
-                'category4': Child category of the category3. The narrowest category.
-                'quantity': Quantity of the cultural heritage item.
-                'registered_date': Registered date of the cultural heritage item.
-                'location_description': Location description of the cultural heritage item.
-                'era': Era of the cultural heritage item.
-                'owner': Owner of the cultural heritage item.
-                'thumbnail': Thumbnail of the cultural heritage item.
-                'content': Content of the cultural heritage item.
-            }
-        """
+    def dict(self) -> dict[str, Any]:
         return {
-            'uid': self.uid,
-            'name': self.name,
-            'name_hanja': self.name_hanja,
-            'city': self.city,
-            'district': self.district,
-            'canceled': self.canceled,
-            'last_modified': self.last_modified,
-            'type_code': self.type_code,
-            'management_number': self.management_number,
-            'city_code': self.city_code,
-            'linkage_number': self.linkage_number,
-            'longitude': self.longitude,
-            'latitude': self.latitude,
-            'type': self.type,
-            'category1': self.category1,
-            'category2': self.category2,
-            'category3': self.category3,
-            'category4': self.category4,
-            'quantity': self.quantity,
-            'registered_date': self.registered_date,
-            'location_description': self.location_description,
-            'era': self.era,
-            'owner': self.owner,
-            'thumbnail': self.thumbnail,
-            'content': self.content
+            "uid": self.uid,
+            "name": self.name,
+            "name_hanja": self.name_hanja,
+            "city": self.city,
+            "district": self.district,
+            "canceled": self.canceled,
+            "last_modified": self.last_modified,
+            "type_code": self.type_code,
+            "management_number": self.management_number,
+            "city_code": self.city_code,
+            "linkage_number": self.linkage_number,
+            "longitude": self.longitude,
+            "latitude": self.latitude,
+            "type": self.type,
+            "category1": self.category1,
+            "category2": self.category2,
+            "category3": self.category3,
+            "category4": self.category4,
+            "quantity": self.quantity,
+            "registered_date": self.registered_date,
+            "location_description": self.location_description,
+            "era": self.era,
+            "owner": self.owner,
+            "thumbnail": self.thumbnail,
+            "content": self.content,
         }
 
 
+@dataclass
 class HeritageImageItem:
-    """Data model for an image of a cultural heritage item.
+    licence: Optional[str]
+    image_url: Optional[str]
+    description: Optional[str]
 
-    :ivar licence: Licence of the image.
-    :ivar image_url: URL of the image.
-    :ivar description: Description of the image."""
-
-    def __init__(self, licence: str, image_url: str, description: str) -> None:
-        """ Initializes the image of a cultural heritage item.
-
-        :param licence: Licence code of the image.
-        :param image_url: URL of the image.
-        :param description: Description of the image.
-        """
-
-        self.licence = licence
-        self.image_url = image_url
-        self.description = description
-
-    def __str__(self):
-        return f"- Image Nuri: {self.licence}\n- Image URL: {self.image_url}\n" \
-               f"- Description: {self.description}"
-
-    def __getitem__(self, item):
+    def __getitem__(self, item: str) -> Any:
         return self.dict()[item]
 
-    def dict(self) -> dict:
-        """ Returns the image of the cultural heritage item as a dictionary.
-
-        :return: The image of the cultural heritage item as a dictionary in the following format:
-            {
-                'image_nuri': Licence code of the image.
-                'image_url': URL of the image.
-                'description': Description of the image.
-            }
-        """
+    def dict(self) -> dict[str, Optional[str]]:
         return {
-            'image_nuri': self.licence,
-            'image_url': self.image_url,
-            'description': self.description
+            "image_nuri": self.licence,
+            "image_url": self.image_url,
+            "description": self.description,
         }
 
 
 class HeritageImageSet:
-    """Data model for multiple images of a cultural heritage item.
-
-    :ivar count: Total number of images available.
-    :ivar type: Type of the cultural heritage item.
-    :ivar management_number: Management number of the cultural heritage item.
-    :ivar city_code: City code of the cultural heritage item.
-    :ivar name: Korean name of the cultural heritage item.
-    :ivar name_hanja: Name of the cultural heritage item in Chinese characters.
-    :ivar images: List of images of the cultural heritage item.
-    """
-
     def __init__(self, xml_data: str) -> None:
-        """ Initializes the images of a cultural heritage item.
-
-        :param xml_data: XML data returned from the API.
-        """
-
         root = ElementTree.fromstring(xml_data)
 
-        self.count = get_text_or_none(root, 'totalCnt')
-        self.type = get_text_or_none(root, 'ccbaKdcd')
-        self.management_number = get_text_or_none(root, 'ccbaAsno')
-        self.city_code = get_text_or_none(root, 'ccbaCtcd')
-        self.name = get_text_or_none(root, 'ccbaMnm1')
-        self.name_hanja = get_text_or_none(root, 'ccbaMnm2')
+        self.count = _text(root, "totalCnt")
+        self.type = _text(root, "ccbaKdcd")
+        self.management_number = _text(root, "ccbaAsno")
+        self.city_code = _text(root, "ccbaCtcd")
+        self.name = _text(root, "ccbaMnm1")
+        self.name_hanja = _text(root, "ccbaMnm2")
 
-        self.images = []
-
-        self.images = []
-        item = root.find('item')
+        self.images: list[HeritageImageItem] = []
+        item = root.find("item")
         if item is not None:
-            for image_info in zip(item.findall('sn'), item.findall('imageNuri'), item.findall('imageUrl'),
-                                  item.findall('ccimDesc')):
-                self.images.append(HeritageImageItem(image_info[1].text, image_info[2].text, image_info[3].text))
+            for image_info in zip(item.findall("imageNuri"), item.findall("imageUrl"), item.findall("ccimDesc")):
+                self.images.append(
+                    HeritageImageItem(
+                        image_info[0].text.strip() if image_info[0].text else None,
+                        image_info[1].text.strip() if image_info[1].text else None,
+                        image_info[2].text.strip() if image_info[2].text else None,
+                    )
+                )
 
-    def __str__(self):
-        result_str = f"Total Count: {self.count}\nType: {self.type}\nManagement Number: {self.management_number}\n" \
-                     f"City Code: {self.city_code}\nName: {self.name}\nName (Hanja): {self.name_hanja}\n"
-        result_str += "\n".join(str(image) for image in self.images)
-        return result_str
-
-    def __getitem__(self, item):
+    def __getitem__(self, item: int) -> HeritageImageItem:
         return self.images[item]
 
     def __iter__(self):
         return iter(self.images)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.images)
 
 
 class HeritageVideoSet:
-    """Data model for multiple videos of a cultural heritage item.
-    Indexes and iteration of this class will return the video URLs.
-
-    :ivar count: Total number of videos available.
-    :ivar type: Type of the cultural heritage item.
-    :ivar management_number: Management number of the cultural heritage item.
-    :ivar city_code: City code of the cultural heritage item.
-    :ivar name: Korean name of the cultural heritage item.
-    :ivar name_hanja: Name of the cultural heritage item in Chinese characters.
-    :ivar videos: List of videos of the cultural heritage item.
-    """
-
     def __init__(self, xml_data: str) -> None:
-        """Initializes the videos of a cultural heritage item.
-
-        :param xml_data: XML data returned from the API.
-        """
         root = ElementTree.fromstring(xml_data)
 
-        self.count = get_text_or_none(root, 'totalCnt')
-        self.type = get_text_or_none(root, 'ccbaKdcd')
-        self.management_number = get_text_or_none(root, 'ccbaAsno')
-        self.city_code = get_text_or_none(root, 'ccbaCtcd')
-        self.name = get_text_or_none(root, 'ccbaMnm1')
-        self.name_hanja = get_text_or_none(root, 'ccbaMnm2')
+        self.count = _text(root, "totalCnt")
+        self.type = _text(root, "ccbaKdcd")
+        self.management_number = _text(root, "ccbaAsno")
+        self.city_code = _text(root, "ccbaCtcd")
+        self.name = _text(root, "ccbaMnm1")
+        self.name_hanja = _text(root, "ccbaMnm2")
 
-        self.videos = []
-        item = root.find('item')
+        self.videos: list[str] = []
+        item = root.find("item")
         if item is not None:
-            for video_info in zip(item.findall('sn'), item.findall('videoUrl')):
-                if video_info[1].text == "http://116.67.83.213/webdata/file_data/media_data/videos/":
+            for node in item.findall("videoUrl"):
+                if node.text is None:
                     continue
-                self.videos.append(video_info[1].text)
+                url = node.text.strip()
+                if url == "http://116.67.83.213/webdata/file_data/media_data/videos/":
+                    continue
+                if url:
+                    self.videos.append(url)
 
-    def __str__(self):
-        result_str = f"Total Count: {self.count}\nType: {self.type}\nManagement Number: {self.management_number}\n" \
-                     f"City Code: {self.city_code}\nName: {self.name}\nName (Hanja): {self.name_hanja}\n"
-        result_str += "\n".join(str(video) for video in self.videos)
-        return result_str
-
-    def __getitem__(self, item):
+    def __getitem__(self, item: int) -> str:
         return self.videos[item]
 
     def __iter__(self):
         return iter(self.videos)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.videos)
 
 
 class HeritageEvent:
-    """Data model for a single event.
+    """Data model for event API with support for legacy and current tags."""
 
-    :ivar sequence_number: Sequence number of the event.
-    :ivar event_type: Type of the event.
-    :ivar event_name: Name of the event.
-    :ivar event_description: Description of the event.
-    :ivar start_date: Start date of the event.
-    :ivar end_date: End date of the event.
-    :ivar host_name: Host name of the event.
-    :ivar contact: Contact information of the event.
-    :ivar event_location: Location of the event.
-    :ivar event_url: URL of the event.
-    :ivar audiance: Audiance of the event.
-    :ivar etc: Additional information of the event.
-    :ivar city: City of the event.
-    :ivar district: District of the event.
-    :ivar time_detail: Time detail of the event.
-    """
+    def __init__(self, xml_data: ElementTree.Element) -> None:
+        self.sequence_number = _text(xml_data, "sn", "seqNo")
+        self.event_type = _text(xml_data, "siteCode")
+        self.event_name = _text(xml_data, "siteName", "subTitle")
+        self.program_name = self.event_name
+        self.event_description = _text(xml_data, "subContent")
+        self.host_name = _text(xml_data, "groupName")
+        self.contact = _text(xml_data, "contact")
+        self.event_location = _text(xml_data, "subDesc")
+        self.event_url = _text(xml_data, "subPath")
 
-    def __init__(self, xml_data: ElementTree) -> None:
-        """Initializes the event object.
+        # 1.x typo kept for compatibility.
+        self.audiance = _text(xml_data, "subDesc1", "subDesc_2")
+        self.target_audience = self.audiance
 
-        :param xml_data: XML data returned from the API.
-        """
-        self.sequence_number = get_text_or_none(xml_data, 'sn')
-        self.event_type = get_text_or_none(xml_data, 'siteCode')
-        self.event_name = get_text_or_none(xml_data, 'siteName')
-        self.event_description = get_text_or_none(xml_data, 'subContent')
-        self.host_name = get_text_or_none(xml_data, 'groupName')
-        self.contact = get_text_or_none(xml_data, 'contact')
-        self.event_location = get_text_or_none(xml_data, 'subDesc')
-        self.event_url = get_text_or_none(xml_data, 'subPath')
-        self.audiance = get_text_or_none(xml_data, 'subDesc1')
-        self.etc = get_text_or_none(xml_data, 'subDesc2')
-        self.city = get_text_or_none(xml_data, 'sido')
-        self.district = get_text_or_none(xml_data, 'gugun')
-        self.time_detail = get_text_or_none(xml_data, 'subDate')
+        self.etc = _text(xml_data, "subDesc2", "subDesc_3")
+        self.extra_info = self.etc
 
-        s_date = get_text_or_none(xml_data, 'sDate')
-        e_date = get_text_or_none(xml_data, 'eDate')
-        self.start_date = time.strptime(s_date, '%Y%m%d') if s_date is not None else None
-        self.end_date = time.strptime(e_date, '%Y%m%d') if e_date is not None else None
+        self.city = _text(xml_data, "sido")
+        self.district = _text(xml_data, "gugun")
+        self.time_detail = _text(xml_data, "subDate")
 
-    def __str__(self):
-        return f"[Event {self.sequence_number}]\n- Type: {self.event_type}\n- Name: {self.event_name}\n" \
-               f"- Description: {self.event_description}\n- Start Date: {self.start_date}\n" \
-               f"- End Date: {self.end_date}\n- Host Name: {self.host_name}\n- Contact: {self.contact}\n" \
-               f"- Location: {self.event_location}\n- URL: {self.event_url}\n- Audiance: {self.audiance}\n" \
-               f"- Etc: {self.etc}\n- City: {self.city}\n- District: {self.district}\n" \
-               f"- Time Detail: {self.time_detail}"
+        self.start_date = _parse_struct_time(_text(xml_data, "sDate"), "%Y%m%d")
+        self.end_date = _parse_struct_time(_text(xml_data, "eDate"), "%Y%m%d")
 
-    def __getitem__(self, item):
+    def __getitem__(self, item: str) -> Any:
         return self.dict()[item]
 
-    def dict(self) -> dict:
-        """ Returns the event as a dictionary.
-        :return: The event as a dictionary in the following format:
-            {
-                'sequence_number': Sequence number of the event.
-                'event_type': Type of the event.
-                'event_name': Name of the event.
-                'event_description': Description of the event.
-                'start_date': Start date of the event.
-                'end_date': End date of the event.
-                'host_name': Host name of the event.
-                'contact': Contact information of the event.
-                'event_location': Location of the event.
-                'event_url': URL of the event.
-                'audiance': Audiance of the event.
-                'etc': Additional information of the event.
-                'city': City of the event.
-                'district': District of the event.
-                'time_detail': Time detail of the event.
-            }
-        """
-
+    def dict(self) -> dict[str, Any]:
         return {
-            'sequence_number': self.sequence_number,
-            'event_type': self.event_type,
-            'event_name': self.event_name,
-            'event_description': self.event_description,
-            'start_date': self.start_date,
-            'end_date': self.end_date,
-            'host_name': self.host_name,
-            'contact': self.contact,
-            'event_location': self.event_location,
-            'event_url': self.event_url,
-            'audiance': self.audiance,
-            'etc': self.etc,
-            'city': self.city,
-            'district': self.district,
-            'time_detail': self.time_detail
+            "sequence_number": self.sequence_number,
+            "event_type": self.event_type,
+            "event_name": self.event_name,
+            "program_name": self.program_name,
+            "event_description": self.event_description,
+            "start_date": self.start_date,
+            "end_date": self.end_date,
+            "host_name": self.host_name,
+            "contact": self.contact,
+            "event_location": self.event_location,
+            "event_url": self.event_url,
+            "audiance": self.audiance,
+            "target_audience": self.target_audience,
+            "etc": self.etc,
+            "extra_info": self.extra_info,
+            "city": self.city,
+            "district": self.district,
+            "time_detail": self.time_detail,
         }
 
 
+@dataclass
 class PalaceSearchResultItem:
-    """Data model for a single palace.
+    serial_number: int
+    palace_code: int
+    detail_code: int
+    item_name: Optional[str]
+    item_explanation: Optional[str]
+    thubnail: Optional[str]
 
-    :ivar serial_number: Serial number of the palace.
-    :ivar palace_code: Palace code of the palace.
-    :ivar detail_code: Detail code of the palace.
-    :ivar item_name: Name of the item.
-    :ivar item_explanation: Explanation of the item.
-    :ivar thubnail: Thumbnail of the item.
-    """
+    @classmethod
+    def from_xml(cls, xml_data: ElementTree.Element) -> "PalaceSearchResultItem":
+        return cls(
+            serial_number=int(_text(xml_data, "serial_number") or 0),
+            palace_code=int(_text(xml_data, "gung_number") or 0),
+            detail_code=int(_text(xml_data, "detail_code") or 0),
+            item_name=_text(xml_data, "contents_kor"),
+            item_explanation=_text(xml_data, "explanation_kor"),
+            thubnail=_text(xml_data, "imgUrl"),
+        )
 
-    def __init__(self, xml_data: ElementTree) -> None:
-        self.serial_number = int(get_text_or_none(xml_data, 'serial_number'))
-        self.palace_code = int(get_text_or_none(xml_data, 'gung_number'))
-        self.detail_code = int(get_text_or_none(xml_data, 'detail_code'))
-        self.item_name = get_text_or_none(xml_data, 'contents_kor')
-        self.item_explanation = get_text_or_none(xml_data, 'explanation_kor')
-        self.thubnail = get_text_or_none(xml_data, 'imgUrl')
-
-    def __str__(self):
-        return f"[Palace {self.serial_number}]\n- Palace Code: {self.palace_code}\n" \
-               f"- Detail Code: {self.detail_code}\n- Item Name: {self.item_name}\n" \
-               f"- Item Explanation: {self.item_explanation}\n- Thumbnail: {self.thubnail}"
-
-    def dict(self) -> dict:
-        """ Returns the palace as a dictionary.
-        :return: The palace as a dictionary in the following format:
-            {
-                'serial_number': Serial number of the palace.
-                'palace_code': Palace code of the palace.
-                'detail_code': Detail code of the palace.
-                'item_name': Name of the item.
-                'item_explanation': Explanation of the item.
-                'thubnail': Thumbnail of the item.
-            }
-        """
-
+    def dict(self) -> dict[str, Any]:
         return {
-            'serial_number': self.serial_number,
-            'palace_code': self.palace_code,
-            'detail_code': self.detail_code,
-            'item_name': self.item_name,
-            'item_explanation': self.item_explanation,
-            'thubnail': self.thubnail
+            "serial_number": self.serial_number,
+            "palace_code": self.palace_code,
+            "detail_code": self.detail_code,
+            "item_name": self.item_name,
+            "item_explanation": self.item_explanation,
+            "thubnail": self.thubnail,
         }
 
 
+@dataclass
 class PalaceImageItem:
-    """Data model for an image of a palace.
+    index: int
+    name_ko: Optional[str]
+    name_en: Optional[str]
+    name_ja: Optional[str]
+    name_zh: Optional[str]
+    explanation_ko: Optional[str]
+    explanation_en: Optional[str]
+    explanation_ja: Optional[str]
+    explanation_zh: Optional[str]
+    url: Optional[str]
 
-    :ivar index: Index of the image.
-    :ivar name_ko: Korean name of the image.
-    :ivar name_en: English name of the image.
-    :ivar name_ja: Japanese name of the image.
-    :ivar name_zh: Chinese name of the image.
-    :ivar explanation_ko: Korean explanation of the image.
-    :ivar explanation_en: English explanation of the image.
-    :ivar explanation_ja: Japanese explanation of the image.
-    :ivar explanation_zh: Chinese explanation of the image.
-    :ivar url: URL of the image.
-    """
+    @classmethod
+    def from_xml(cls, xml_data: ElementTree.Element) -> "PalaceImageItem":
+        return cls(
+            index=int(_text(xml_data, "imageIndex") or 0),
+            name_ko=_text(xml_data, "imageContentsKor"),
+            name_en=_text(xml_data, "imageContentsEng"),
+            name_ja=_text(xml_data, "imageContentsJpa"),
+            name_zh=_text(xml_data, "imageContentsChi"),
+            explanation_ko=_text(xml_data, "imageExplanationKor"),
+            explanation_en=_text(xml_data, "imageExplanationEng"),
+            explanation_ja=_text(xml_data, "imageExplanationJpa"),
+            explanation_zh=_text(xml_data, "imageExplanationChi"),
+            url=_text(xml_data, "imageUrl"),
+        )
 
-    def __init__(self, xml_data: ElementTree) -> None:
-        self.index = int(get_text_or_none(xml_data, 'imageIndex'))
-        self.name_ko = get_text_or_none(xml_data, 'imageContentsKor')
-        self.name_en = get_text_or_none(xml_data, 'imageContentsEng')
-        self.name_ja = get_text_or_none(xml_data, 'imageContentsJpa')
-        self.name_zh = get_text_or_none(xml_data, 'imageContentsChi')
-        self.explanation_ko = get_text_or_none(xml_data, 'imageExplanationKor')
-        self.explanation_en = get_text_or_none(xml_data, 'imageExplanationEng')
-        self.explanation_ja = get_text_or_none(xml_data, 'imageExplanationJpa')
-        self.explanation_zh = get_text_or_none(xml_data, 'imageExplanationChi')
-        self.url = get_text_or_none(xml_data, 'imageUrl')
-
-    def __str__(self):
-        return f"[Image {self.index}]\n- Name (Korean): {self.name_ko}\n- Name (English): {self.name_en}\n" \
-               f"- Name (Japanese): {self.name_ja}\n- Name (Chinese): {self.name_zh}\n" \
-               f"- Explanation (Korean): {self.explanation_ko}\n- Explanation (English): {self.explanation_en}\n" \
-               f"- Explanation (Japanese): {self.explanation_ja}\n- Explanation (Chinese): {self.explanation_zh}\n" \
-               f"- URL: {self.url}"
-
-    def dict(self) -> dict:
-        """ Returns the image as a dictionary.
-        :return: The image as a dictionary in the following format:
-            {
-                'index': Index of the image.
-                'name_ko': Korean name of the image.
-                'name_en': English name of the image.
-                'name_ja': Japanese name of the image.
-                'name_zh': Chinese name of the image.
-                'explanation_ko': Korean explanation of the image.
-                'explanation_en': English explanation of the image.
-                'explanation_ja': Japanese explanation of the image.
-                'explanation_zh': Chinese explanation of the image.
-                'url': URL of the image.
-            }
-        """
-
+    def dict(self) -> dict[str, Any]:
         return {
-            'index': self.index,
-            'name_ko': self.name_ko,
-            'name_en': self.name_en,
-            'name_ja': self.name_ja,
-            'name_zh': self.name_zh,
-            'explanation_ko': self.explanation_ko,
-            'explanation_en': self.explanation_en,
-            'explanation_ja': self.explanation_ja,
-            'explanation_zh': self.explanation_zh,
-            'url': self.url
+            "index": self.index,
+            "name_ko": self.name_ko,
+            "name_en": self.name_en,
+            "name_ja": self.name_ja,
+            "name_zh": self.name_zh,
+            "explanation_ko": self.explanation_ko,
+            "explanation_en": self.explanation_en,
+            "explanation_ja": self.explanation_ja,
+            "explanation_zh": self.explanation_zh,
+            "url": self.url,
         }
 
 
+@dataclass
 class PalaceVideoItem:
-    """Data model for a video of a palace.
+    index: int
+    name_ko: Optional[str]
+    name_en: Optional[str]
+    name_ja: Optional[str]
+    name_zh: Optional[str]
+    url_ko: Optional[str]
+    url_en: Optional[str]
+    url_ja: Optional[str]
+    url_zh: Optional[str]
 
-    :ivar index: Index of the video.
-    :ivar name_ko: Korean name of the video.
-    :ivar name_en: English name of the video.
-    :ivar name_ja: Japanese name of the video.
-    :ivar name_zh: Chinese name of the video.
-    :ivar url_ko: URL to Korean version of the video.
-    :ivar url_en: URL to English version of the video.
-    :ivar url_ja: URL to Japanese version of the video.
-    :ivar url_zh: URL to Chinese version of the video.
-    """
+    @classmethod
+    def from_xml(cls, xml_data: ElementTree.Element) -> "PalaceVideoItem":
+        return cls(
+            index=int(_text(xml_data, "movieIndex") or 0),
+            name_ko=_text(xml_data, "movieContentsKor"),
+            name_en=_text(xml_data, "movieContentsEng"),
+            name_ja=_text(xml_data, "movieContentsJpa"),
+            name_zh=_text(xml_data, "movieContentsChi"),
+            url_ko=_text(xml_data, "movieUrlKor"),
+            url_en=_text(xml_data, "movieUrlEng"),
+            url_ja=_text(xml_data, "movieUrlJpa"),
+            url_zh=_text(xml_data, "movieUrlChi"),
+        )
 
-    def __init__(self, xml_data: ElementTree) -> None:
-        """ Initializes the video of a palace.
-
-        :param xml_data: XML data returned from the API.
-        """
-        self.index = int(get_text_or_none(xml_data, 'movieIndex'))
-        self.name_ko = get_text_or_none(xml_data, 'movieContentsKor')
-        self.name_en = get_text_or_none(xml_data, 'movieContentsEng')
-        self.name_ja = get_text_or_none(xml_data, 'movieContentsJpa')
-        self.name_zh = get_text_or_none(xml_data, 'movieContentsChi')
-        self.url_ko = get_text_or_none(xml_data, 'movieUrlKor')
-        self.url_en = get_text_or_none(xml_data, 'movieUrlEng')
-        self.url_ja = get_text_or_none(xml_data, 'movieUrlJpa')
-        self.url_zh = get_text_or_none(xml_data, 'movieUrlChi')
-
-    def __str__(self):
-        return f"[Video {self.index}]\n- Name (Korean): {self.name_ko}\n- Name (English): {self.name_en}\n" \
-               f"- Name (Japanese): {self.name_ja}\n- Name (Chinese): {self.name_zh}\n" \
-               f"- URL (Korean): {self.url_ko}\n- URL (English): {self.url_en}\n" \
-               f"- URL (Japanese): {self.url_ja}\n- URL (Chinese): {self.url_zh}"
-
-    def dict(self) -> dict:
-        """ Returns the video as a dictionary.
-        :return: The video as a dictionary in the following format:
-            {
-                'index': Index of the video.
-                'name_ko': Korean name of the video.
-                'name_en': English name of the video.
-                'name_ja': Japanese name of the video.
-                'name_zh': Chinese name of the video.
-                'url_ko': Korean URL of the video.
-                'url_en': English URL of the video.
-                'url_ja': Japanese URL of the video.
-                'url_zh': Chinese URL of the video.
-            }
-        """
+    def dict(self) -> dict[str, Any]:
         return {
-            'index': self.index,
-            'name_ko': self.name_ko,
-            'name_en': self.name_en,
-            'name_ja': self.name_ja,
-            'name_zh': self.name_zh,
-            'url_ko': self.url_ko,
-            'url_en': self.url_en,
-            'url_ja': self.url_ja,
-            'url_zh': self.url_zh
+            "index": self.index,
+            "name_ko": self.name_ko,
+            "name_en": self.name_en,
+            "name_ja": self.name_ja,
+            "name_zh": self.name_zh,
+            "url_ko": self.url_ko,
+            "url_en": self.url_en,
+            "url_ja": self.url_ja,
+            "url_zh": self.url_zh,
         }
 
 
 class PalaceDetail:
-    """Data model for a detailed information of a single palace.
-
-    :ivar serial_number: Serial number of the item.
-    :ivar palace_code: Palace code of the palace.
-    :ivar detail_code: Detail code of the palace.
-    :ivar name_ko: Korean name of the palace.
-    :ivar name_en: English name of the palace.
-    :ivar name_ja: Japanese name of the palace.
-    :ivar name_zh: Chinese name of the palace.
-    :ivar explanation_ko: Korean explanation of the palace.
-    :ivar explanation_en: English explanation of the palace.
-    :ivar explanation_ja: Japanese explanation of the palace.
-    :ivar explanation_zh: Chinese explanation of the palace.
-    :ivar thubnail: Thumbnail of the palace.
-    :ivar main_image: List of main images of the palace.
-    :ivar detail_image_list: List of detail images of the palace.
-    :ivar main_video: List of main videos of the palace.
-    :ivar detail_video_list: List of detail videos of the palace.
-    """
-
     def __init__(self, xml_data: str) -> None:
-        """ Initializes the detailed information of a single palace.
-
-        :param xml_data: XML data returned from the API.
-        """
-
         root = ElementTree.fromstring(xml_data)
 
-        self.serial_number = int(get_text_or_none(root, 'serial_number'))
-        self.palace_code = int(get_text_or_none(root, 'gung_number'))
-        self.detail_code = int(get_text_or_none(root, 'detail_code'))
-        self.name_ko = get_text_or_none(root, 'contents_kor')
-        self.name_en = get_text_or_none(root, 'contents_eng')
-        self.name_ja = get_text_or_none(root, 'contents_jpa')
-        self.name_zh = get_text_or_none(root, 'contents_chi')
-        self.explanation_ko = get_text_or_none(root, 'explanation_kor')
-        self.explanation_en = get_text_or_none(root, 'explanation_eng')
-        self.explanation_ja = get_text_or_none(root, 'explanation_jpa')
-        self.explanation_zh = get_text_or_none(root, 'explanation_chi')
-        self.thubnail = get_text_or_none(root.find('mainImage'), 'imgUrl')
+        self.serial_number = int(_text(root, "serial_number") or 0)
+        self.palace_code = int(_text(root, "gung_number") or 0)
+        self.detail_code = int(_text(root, "detail_code") or 0)
+        self.name_ko = _text(root, "contents_kor")
+        self.name_en = _text(root, "contents_eng")
+        self.name_ja = _text(root, "contents_jpa")
+        self.name_zh = _text(root, "contents_chi")
+        self.explanation_ko = _text(root, "explanation_kor")
+        self.explanation_en = _text(root, "explanation_eng")
+        self.explanation_ja = _text(root, "explanation_jpa")
+        self.explanation_zh = _text(root, "explanation_chi")
+        self.thubnail = _text(root.find("mainImage"), "imgUrl")
 
-        # Parsing main images
-        self.main_image = [img.text.strip() for img in root.findall('.//listImg/image')]
+        self.main_image = [(img.text or "").strip() for img in root.findall(".//listImg/image") if (img.text or "").strip()]
+        self.main_video = [(mov.text or "").strip() for mov in root.findall(".//listMoving/moving") if (mov.text or "").strip()]
 
-        # Parsing main videos
-        self.main_video = [mov.text.strip() for mov in root.findall('.//listMoving/moving')]
-
-        # Parsing detailed image list
-        self.detail_image_list = []
-        for image_info in root.findall('.//imageList/imageInfo'):
-            self.detail_image_list.append(PalaceImageItem(image_info))
-
-        # Parsing detailed video list
-        self.detail_video_list = []
-        for video_info in root.findall('.//movieList/movieInfo'):
-            self.detail_video_list.append(PalaceVideoItem(video_info))
-
-        # Sorting (if needed)
-        self.detail_image_list.sort(key=lambda x: x.index)
-        self.detail_video_list.sort(key=lambda x: x.index)
-
-    def __str__(self):
-        result_str = f"[Palace {self.serial_number}]\n- Palace Code: {self.palace_code}\n" \
-                     f"- Detail Code: {self.detail_code}\n- Name (Korean): {self.name_ko}\n" \
-                     f"- Name (English): {self.name_en}\n- Name (Japanese): {self.name_ja}\n" \
-                     f"- Name (Chinese): {self.name_zh}\n- Explanation (Korean): {self.explanation_ko}\n" \
-                     f"- Explanation (English): {self.explanation_en}\n" \
-                     f"- Explanation (Japanese): {self.explanation_ja}\n" \
-                     f"- Explanation (Chinese): {self.explanation_zh}\n- Thumbnail: {self.thubnail}\n"
-
-        result_str += "\n".join(str(image) for image in self.main_image)
-        result_str += "\n".join(str(image) for image in self.detail_image_list)
-        result_str += "\n".join(str(video) for video in self.main_video)
-        result_str += "\n".join(str(video) for video in self.detail_video_list)
-        return result_str
-
-
+        self.detail_image_list = sorted(
+            [PalaceImageItem.from_xml(image_info) for image_info in root.findall(".//imageList/imageInfo")],
+            key=lambda x: x.index,
+        )
+        self.detail_video_list = sorted(
+            [PalaceVideoItem.from_xml(video_info) for video_info in root.findall(".//movieList/movieInfo")],
+            key=lambda x: x.index,
+        )
 # ===================================================== CONSTANTS =====================================================
 
 
@@ -849,6 +501,8 @@ class HeritageType:
     REGIONAL_FOLKLORE_HERITAGE = '24'  # 시도민속문화재
     REGIONAL_REGISTERED_HERITAGE = '25'  # 시도등록문화재
     HERITAGE_MATERIAL = '31'  # 문화재자료
+    REGIONAL_NATURAL_HERITAGE = '55'  # 시도자연유산
+    REGIONAL_NATURAL_HERITAGE_MATERIAL = '66'  # 시도자연유산자료
     NATIONAL_REGISTERED_HERITAGE = '79'  # 국가등록문화재
     NORTH_KOREAN_INTANGIBLE_HERITAGE = '80'  # 이북5도무형문화재
 

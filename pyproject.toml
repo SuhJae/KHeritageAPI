@@ -1,26 +1,26 @@
 [project]
 name = "kheritage"
-version = "1.0.0"
+version = "2.0.0"
 authors = [
-  { name="Jay Suh", email="jay@joseon.space" },
+  { name = "Jay Suh", email = "jay@joseon.space" },
 ]
-description = "A Python package aimed easy abstraction of the Cultural Heritage API provided by the Cultural Heritage Administration of Korea."
+description = "Python wrapper for Korea Cultural Heritage APIs."
 readme = "README.md"
-requires-python = ">=3.7"
+requires-python = ">=3.9"
+dependencies = [
+  "requests>=2.31.0",
+]
 classifiers = [
-    "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: MIT License",
-    "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/SuhJae/KHeritageAPI"
+Homepage = "https://github.com/SuhJae/KHeritageAPI"
 "Bug Tracker" = "https://github.com/SuhJae/KHeritageAPI/issues"
 "Source Code" = "https://github.com/SuhJae/KHeritageAPI"
 
 [build-system]
-requires = ["requests", "setuptools", "wheel"]
-
-[tool.setuptools.dynamic]
-
-dependencies = { file = "requirements.txt" }
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"

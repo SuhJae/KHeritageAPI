@@ -1,0 +1,23 @@
+<result>
+  <totalCnt>2</totalCnt>
+  <pageUnit>1</pageUnit>
+  <pageIndex>1</pageIndex>
+  <item>
+    <sn>1</sn>
+    <no>1</no>
+    <ccmaName>국보</ccmaName>
+    <ccbaMnm1>서울 숭례문</ccbaMnm1>
+    <ccbaMnm2>서울 崇禮門</ccbaMnm2>
+    <ccbaCtcdNm>서울</ccbaCtcdNm>
+    <ccsiName>중구</ccsiName>
+    <ccbaAdmin>국가유산청 덕수궁관리소</ccbaAdmin>
+    <ccbaKdcd>11</ccbaKdcd>
+    <ccbaCtcd>11</ccbaCtcd>
+    <ccbaAsno>0000010000000</ccbaAsno>
+    <ccbaCncl>N</ccbaCncl>
+    <ccbaCpno>1111100010000</ccbaCpno>
+    <longitude>126.97</longitude>
+    <latitude>37.55</latitude>
+    <regDt>2025-06-26 18:46:08</regDt>
+  </item>
+</result>

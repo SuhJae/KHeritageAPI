@@ -1,0 +1,25 @@
+<result>
+  <ccbaKdcd>11</ccbaKdcd>
+  <ccbaAsno>0000010000000</ccbaAsno>
+  <ccbaCtcd>11</ccbaCtcd>
+  <ccbaCpno>1111100010000</ccbaCpno>
+  <longitude>126.97</longitude>
+  <latitude>37.55</latitude>
+  <item>
+    <ccmaName>국보</ccmaName>
+    <ccbaMnm1>서울 숭례문</ccbaMnm1>
+    <ccbaMnm2>서울 崇禮門</ccbaMnm2>
+    <gcodeName>유적건조물</gcodeName>
+    <bcodeName>정치국방</bcodeName>
+    <mcodeName>성</mcodeName>
+    <scodeName>성곽시설</scodeName>
+    <ccbaQuan>1동</ccbaQuan>
+    <ccbaAsdt>19621220</ccbaAsdt>
+    <ccbaLcad>서울 중구 세종대로 40</ccbaLcad>
+    <ccceName>조선 태조 7년</ccceName>
+    <ccbaPoss>국유</ccbaPoss>
+    <ccbaAdmin>국가유산청 덕수궁관리소</ccbaAdmin>
+    <imageUrl>http://www.khs.go.kr/image.jpg</imageUrl>
+    <content>설명</content>
+  </item>
+</result>
